@@ -81,14 +81,22 @@ async function handler(req) {
       }
 
       const title = body?.title ?? existing.title;
-      const status = body?.status ?? existing.status;
-      const completed = status === 'done' ? 1 : 0;
+      const newStatus = body?.status ?? existing.status;
+      const completed = newStatus === 'done' ? 1 : 0;
       const dueDate = body?.due_date !== undefined ? body.due_date : existing.due_date;
       const priority = body?.priority !== undefined ? body.priority : existing.priority;
       
+      // Set completed_at when moving to done, clear it when moving away from done
+      let completedAt = existing.completed_at;
+      if (newStatus === 'done' && existing.status !== 'done') {
+        completedAt = new Date().toISOString();
+      } else if (newStatus !== 'done') {
+        completedAt = null;
+      }
+      
       db.run(
-        "UPDATE todos SET title = ?, completed = ?, status = ?, due_date = ?, priority = ? WHERE id = ?",
-        [title, completed, status, dueDate, priority, id]
+        "UPDATE todos SET title = ?, completed = ?, status = ?, due_date = ?, priority = ?, completed_at = ? WHERE id = ?",
+        [title, completed, newStatus, dueDate, priority, completedAt, id]
       );
       const updated = db.query("SELECT * FROM todos WHERE id = ?").get(id);
       return jsonResponse(updated);
