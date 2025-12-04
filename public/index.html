@@ -628,6 +628,31 @@
       font-size: 0.9rem;
       margin-bottom: 10px;
       line-height: 1.4;
+      cursor: text;
+      padding: 4px 6px;
+      margin: -4px -6px 6px -6px;
+      border-radius: 6px;
+      transition: background 0.15s;
+    }
+
+    .card-title:hover {
+      background: var(--bg-secondary);
+    }
+
+    .card-title-input {
+      width: 100%;
+      font-size: 0.9rem;
+      line-height: 1.4;
+      padding: 4px 6px;
+      margin: -4px -6px 6px -6px;
+      border: 1px solid var(--accent);
+      border-radius: 6px;
+      background: var(--bg-secondary);
+      color: var(--text-primary);
+      font-family: inherit;
+      resize: none;
+      outline: none;
+      box-shadow: 0 0 0 3px rgba(88, 166, 255, 0.15);
     }
 
     .column-done .card-title {
@@ -1263,7 +1288,7 @@
 
       return `
         <div class="card ${cardOverdueClass}" draggable="true" data-id="${todo.id}">
-          <div class="card-title">${escapeHtml(todo.title)}</div>
+          <div class="card-title" onclick="startEditTitle(${todo.id}, this)">${escapeHtml(todo.title)}</div>
           ${completedDateDisplay}
           <div class="card-actions">
             <div class="date-picker-wrapper card-date-picker" id="${datePickerId}">
@@ -1401,6 +1426,57 @@
         body: JSON.stringify({ [field]: value || null })
       });
       loadTodos();
+    }
+
+    function startEditTitle(id, element) {
+      const currentTitle = element.textContent;
+      const card = element.closest('.card');
+      card.setAttribute('draggable', 'false');
+      
+      const textarea = document.createElement('textarea');
+      textarea.className = 'card-title-input';
+      textarea.value = currentTitle;
+      textarea.rows = 1;
+      
+      // Auto-resize
+      const autoResize = () => {
+        textarea.style.height = 'auto';
+        textarea.style.height = textarea.scrollHeight + 'px';
+      };
+      
+      element.replaceWith(textarea);
+      textarea.focus();
+      textarea.select();
+      autoResize();
+      
+      textarea.addEventListener('input', autoResize);
+      
+      const saveEdit = async () => {
+        const newTitle = textarea.value.trim();
+        if (newTitle && newTitle !== currentTitle) {
+          await updateTodo(id, 'title', newTitle);
+        } else {
+          // Restore without saving if empty or unchanged
+          const titleDiv = document.createElement('div');
+          titleDiv.className = 'card-title';
+          titleDiv.textContent = currentTitle;
+          titleDiv.onclick = () => startEditTitle(id, titleDiv);
+          textarea.replaceWith(titleDiv);
+          card.setAttribute('draggable', 'true');
+        }
+      };
+      
+      textarea.addEventListener('blur', saveEdit);
+      textarea.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+          e.preventDefault();
+          textarea.blur();
+        }
+        if (e.key === 'Escape') {
+          textarea.value = currentTitle;
+          textarea.blur();
+        }
+      });
     }
 
     async function deleteTodo(id) {
