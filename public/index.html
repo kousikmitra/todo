@@ -1566,6 +1566,7 @@
       if (visible) {
         appEl.classList.remove('hidden');
         hiddenHint.classList.remove('visible');
+        setTimeout(() => todoInput.focus(), 100);
       } else {
         appEl.classList.add('hidden');
         hiddenHint.classList.add('visible');
