@@ -1,41 +1,107 @@
-# Todo App
+# Todo Board
 
-A simple single-page todo application built with Bun, SQLite, and vanilla JavaScript.
+A beautiful Kanban-style todo board application built with Bun, SQLite, and vanilla JavaScript.
+
+## Features
+
+- 📋 Kanban board with Todo, Doing, Done columns
+- 🎯 Drag and drop tasks between columns
+- 📅 Custom date picker for due dates
+- 🔥 Priority levels (High, Medium, Low)
+- ✏️ Inline title editing
+- 📱 Responsive design
+- 🌙 Dark theme
 
 ## Requirements
 
 - [Bun](https://bun.sh) runtime
 
-## Setup
+## Installation
 
 ```bash
-# Install Bun (if not already installed)
-curl -fsSL https://bun.sh/install | bash
+./install.sh
+```
 
-# Run the server
-bun run start
+This will:
+- Install the app to `~/.local/share/todos/`
+- Create a `todos` command in `~/.local/bin/`
+- Set up launchd service for background running
+- Set up config at `~/.config/todos/`
+- Store database at `~/Library/Application Support/todos/`
 
-# Or run with hot-reload for development
-bun run dev
+### Add to PATH (if needed)
+
+If `~/.local/bin` is not in your PATH, add this to `~/.zshrc`:
+
+```bash
+export PATH="$HOME/.local/bin:$PATH"
 ```
 
 ## Usage
 
-Open http://localhost:3000 in your browser.
+### Service Management
 
-## API Endpoints
+```bash
+todos start      # Start as background service
+todos stop       # Stop the service
+todos restart    # Restart the service
+todos status     # Check if running
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/api/todos` | List all todos |
-| POST | `/api/todos` | Create a new todo |
-| PUT | `/api/todos/:id` | Update a todo |
-| DELETE | `/api/todos/:id` | Delete a todo |
+todos enable     # Enable auto-start on login
+todos disable    # Disable auto-start on login
 
-## Tech Stack
+todos logs       # Tail the log files
+todos run        # Run in foreground (development)
+```
 
-- **Runtime**: Bun
-- **Database**: SQLite (via bun:sqlite)
-- **Frontend**: Vanilla JavaScript
-- **Styling**: CSS with custom properties
+### Quick Start
 
+```bash
+todos start && open http://localhost:5555
+```
+
+### Running in Foreground
+
+```bash
+todos            # Runs in foreground (Ctrl+C to stop)
+# or
+todos run
+```
+
+## Configuration
+
+Edit `~/.config/todos/config.json`:
+
+```json
+{
+  "port": 5555,
+  "host": "localhost"
+}
+```
+
+## File Locations
+
+| Type | Path |
+|------|------|
+| Config | `~/.config/todos/config.json` |
+| Database | `~/Library/Application Support/todos/todos.db` |
+| Application | `~/.local/share/todos/` |
+| Launcher | `~/.local/bin/todos` |
+| Logs | `~/Library/Logs/todos.log` |
+| Service | `~/Library/LaunchAgents/com.todos.app.plist` |
+
+## Uninstall
+
+```bash
+./uninstall.sh
+```
+
+You'll be prompted to keep or remove your data.
+
+## Development
+
+```bash
+# Run from source directory
+bun run dev      # With hot reload
+bun run start    # Production mode
+```

@@ -1,10 +1,14 @@
 {
   "name": "todo-app",
   "version": "1.0.0",
+  "description": "A beautiful Kanban-style todo board application",
   "scripts": {
     "start": "bun run server.js",
-    "dev": "bun --watch run server.js"
+    "dev": "bun --watch run server.js",
+    "install-app": "chmod +x install.sh && ./install.sh",
+    "uninstall-app": "chmod +x uninstall.sh && ./uninstall.sh"
   },
-  "type": "module"
+  "type": "module",
+  "author": "",
+  "license": "MIT"
 }
-

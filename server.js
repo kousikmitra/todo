@@ -1,6 +1,10 @@
 import db from "./db.js";
+import config from "./config.js";
+import { dirname, join } from "path";
+import { fileURLToPath } from "url";
 
-const PORT = 3000;
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const PUBLIC_DIR = join(__dirname, "public");
 
 /**
  * Parses JSON body from request
@@ -27,9 +31,11 @@ function jsonResponse(data, status = 200) {
  * Serves static files from public directory
  */
 async function serveStatic(pathname) {
-  const filePath = pathname === "/" ? "./public/index.html" : `./public${pathname}`;
+  const filePath = pathname === "/"
+    ? join(PUBLIC_DIR, "index.html")
+    : join(PUBLIC_DIR, pathname);
   const file = Bun.file(filePath);
-  
+
   if (await file.exists()) {
     return new Response(file);
   }
@@ -75,7 +81,7 @@ async function handler(req) {
       const id = putMatch[1];
       const body = await parseBody(req);
       const existing = db.query("SELECT * FROM todos WHERE id = ?").get(id);
-      
+
       if (!existing) {
         return jsonResponse({ error: "Todo not found" }, 404);
       }
@@ -85,7 +91,7 @@ async function handler(req) {
       const completed = newStatus === 'done' ? 1 : 0;
       const dueDate = body?.due_date !== undefined ? body.due_date : existing.due_date;
       const priority = body?.priority !== undefined ? body.priority : existing.priority;
-      
+
       // Set completed_at when moving to done, clear it when moving away from done
       let completedAt = existing.completed_at;
       if (newStatus === 'done' && existing.status !== 'done') {
@@ -93,7 +99,7 @@ async function handler(req) {
       } else if (newStatus !== 'done') {
         completedAt = null;
       }
-      
+
       db.run(
         "UPDATE todos SET title = ?, completed = ?, status = ?, due_date = ?, priority = ?, completed_at = ? WHERE id = ?",
         [title, completed, newStatus, dueDate, priority, completedAt, id]
@@ -107,7 +113,7 @@ async function handler(req) {
     if (method === "DELETE" && deleteMatch) {
       const id = deleteMatch[1];
       const existing = db.query("SELECT * FROM todos WHERE id = ?").get(id);
-      
+
       if (!existing) {
         return jsonResponse({ error: "Todo not found" }, 404);
       }
@@ -121,9 +127,12 @@ async function handler(req) {
   return serveStatic(pathname);
 }
 
-console.log(`Server running at http://localhost:${PORT}`);
+console.log(`Todo app starting...`);
+console.log(`  Config: ${config.configFile}`);
+console.log(`  Database: ${config.dbPath}`);
+console.log(`  Server: http://${config.host}:${config.port}`);
 
 export default {
-  port: PORT,
+  port: config.port,
   fetch: handler,
 };
