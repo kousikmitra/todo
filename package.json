@@ -1,0 +1,10 @@
+{
+  "name": "todo-app",
+  "version": "1.0.0",
+  "scripts": {
+    "start": "bun run server.js",
+    "dev": "bun --watch run server.js"
+  },
+  "type": "module"
+}
+

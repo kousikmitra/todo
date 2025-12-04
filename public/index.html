@@ -1,0 +1,628 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Todo Board</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Outfit:wght@400;500;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-primary: #0d1117;
+      --bg-secondary: #161b22;
+      --bg-tertiary: #21262d;
+      --border: #30363d;
+      --text-primary: #e6edf3;
+      --text-secondary: #8b949e;
+      --accent: #58a6ff;
+      --accent-hover: #79b8ff;
+      --success: #3fb950;
+      --warning: #d29922;
+      --danger: #f85149;
+      --column-todo: #58a6ff;
+      --column-doing: #d29922;
+      --column-done: #3fb950;
+      --priority-high: #f85149;
+      --priority-medium: #d29922;
+      --priority-low: #3fb950;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Outfit', sans-serif;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      min-height: 100vh;
+      background-image: 
+        radial-gradient(ellipse at top left, rgba(88, 166, 255, 0.08) 0%, transparent 40%),
+        radial-gradient(ellipse at bottom right, rgba(63, 185, 80, 0.06) 0%, transparent 40%);
+    }
+
+    .app {
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      padding: 20px;
+      gap: 20px;
+    }
+
+    .add-section {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 20px;
+    }
+
+    .add-form {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+    }
+
+    .add-form input[type="text"] {
+      flex: 1;
+      padding: 14px 20px;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: var(--bg-tertiary);
+      color: var(--text-primary);
+      font-size: 1rem;
+      font-family: inherit;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+
+    .add-form input[type="text"]:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(88, 166, 255, 0.15);
+    }
+
+    .add-form input[type="text"]::placeholder {
+      color: var(--text-secondary);
+    }
+
+    .add-form input[type="date"],
+    .add-form select {
+      padding: 14px 16px;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: var(--bg-tertiary);
+      color: var(--text-primary);
+      font-size: 0.9rem;
+      font-family: inherit;
+      cursor: pointer;
+      transition: border-color 0.2s;
+    }
+
+    .add-form input[type="date"]:focus,
+    .add-form select:focus {
+      outline: none;
+      border-color: var(--accent);
+    }
+
+    .btn {
+      padding: 14px 28px;
+      border: none;
+      border-radius: 12px;
+      font-size: 1rem;
+      font-weight: 500;
+      font-family: inherit;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .btn-primary {
+      background: var(--accent);
+      color: var(--bg-primary);
+    }
+
+    .btn-primary:hover {
+      background: var(--accent-hover);
+      transform: translateY(-1px);
+    }
+
+    .board {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 20px;
+      flex: 1;
+      min-height: 0;
+    }
+
+    .column {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+      overflow: hidden;
+    }
+
+    .column-header {
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-shrink: 0;
+    }
+
+    .column-title {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 600;
+      font-size: 0.95rem;
+    }
+
+    .column-indicator {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+    }
+
+    .column-todo .column-indicator { background: var(--column-todo); }
+    .column-doing .column-indicator { background: var(--column-doing); }
+    .column-done .column-indicator { background: var(--column-done); }
+
+    .column-count {
+      background: var(--bg-tertiary);
+      padding: 4px 10px;
+      border-radius: 20px;
+      font-size: 0.75rem;
+      color: var(--text-secondary);
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .column-body {
+      flex: 1;
+      overflow-y: auto;
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .column-body::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    .column-body::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    .column-body::-webkit-scrollbar-thumb {
+      background: var(--border);
+      border-radius: 3px;
+    }
+
+    .card {
+      background: var(--bg-tertiary);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 14px;
+      cursor: grab;
+      transition: transform 0.2s, box-shadow 0.2s, opacity 0.2s;
+    }
+
+    .card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    }
+
+    .card.dragging {
+      opacity: 0.5;
+      cursor: grabbing;
+    }
+
+    .card-title {
+      font-size: 0.9rem;
+      margin-bottom: 10px;
+      line-height: 1.4;
+    }
+
+    .column-done .card-title {
+      text-decoration: line-through;
+      opacity: 0.7;
+    }
+
+    .card-meta {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .priority-badge {
+      padding: 3px 8px;
+      border-radius: 6px;
+      font-size: 0.65rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+    }
+
+    .priority-high {
+      background: rgba(248, 81, 73, 0.15);
+      color: var(--priority-high);
+    }
+
+    .priority-medium {
+      background: rgba(210, 153, 34, 0.15);
+      color: var(--priority-medium);
+    }
+
+    .priority-low {
+      background: rgba(63, 185, 80, 0.15);
+      color: var(--priority-low);
+    }
+
+    .due-date {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.7rem;
+      color: var(--text-secondary);
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .due-date svg {
+      width: 12px;
+      height: 12px;
+    }
+
+    .due-date.overdue {
+      color: var(--danger);
+    }
+
+    .card-actions {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-top: 12px;
+      padding-top: 10px;
+      border-top: 1px solid var(--border);
+    }
+
+    .card-actions input[type="date"],
+    .card-actions select {
+      flex: 1;
+      padding: 6px 8px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: var(--bg-secondary);
+      color: var(--text-primary);
+      font-size: 0.7rem;
+      font-family: inherit;
+      cursor: pointer;
+      transition: border-color 0.15s;
+    }
+
+    .card-actions input[type="date"]:focus,
+    .card-actions select:focus {
+      outline: none;
+      border-color: var(--accent);
+    }
+
+    .card-actions .btn-delete {
+      padding: 6px 10px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: transparent;
+      color: var(--text-secondary);
+      font-size: 0.7rem;
+      font-family: inherit;
+      cursor: pointer;
+      transition: all 0.15s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .card-actions .btn-delete:hover {
+      border-color: var(--danger);
+      color: var(--danger);
+      background: rgba(248, 81, 73, 0.1);
+    }
+
+    .card-actions .btn-delete svg {
+      width: 14px;
+      height: 14px;
+    }
+
+    .column-done .card-actions input[type="date"],
+    .column-done .card-actions select {
+      display: none;
+    }
+
+    .column.drag-over {
+      background: rgba(88, 166, 255, 0.05);
+      border-color: var(--accent);
+    }
+
+    .empty-column {
+      text-align: center;
+      padding: 40px 20px;
+      color: var(--text-secondary);
+      font-size: 0.85rem;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .card {
+      animation: fadeIn 0.25s ease-out;
+    }
+
+    @media (max-width: 900px) {
+      .board {
+        grid-template-columns: 1fr;
+        grid-template-rows: repeat(3, minmax(200px, 1fr));
+      }
+
+      .add-form {
+        flex-wrap: wrap;
+      }
+
+      .add-form input[type="text"] {
+        width: 100%;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <div class="add-section">
+      <form class="add-form" id="addForm">
+        <input type="text" id="todoInput" placeholder="What needs to be done?" autocomplete="off" autofocus>
+        <input type="date" id="dueDateInput" title="Due date (optional)">
+        <select id="priorityInput" title="Priority (optional)">
+          <option value="">Priority</option>
+          <option value="low">Low</option>
+          <option value="medium">Medium</option>
+          <option value="high">High</option>
+        </select>
+        <button type="submit" class="btn btn-primary">Add Task</button>
+      </form>
+    </div>
+
+    <div class="board">
+      <div class="column column-todo" data-status="todo">
+        <div class="column-header">
+          <div class="column-title">
+            <span class="column-indicator"></span>
+            Todo
+          </div>
+          <span class="column-count" id="countTodo">0</span>
+        </div>
+        <div class="column-body" id="columnTodo"></div>
+      </div>
+
+      <div class="column column-doing" data-status="doing">
+        <div class="column-header">
+          <div class="column-title">
+            <span class="column-indicator"></span>
+            Doing
+          </div>
+          <span class="column-count" id="countDoing">0</span>
+        </div>
+        <div class="column-body" id="columnDoing"></div>
+      </div>
+
+      <div class="column column-done" data-status="done">
+        <div class="column-header">
+          <div class="column-title">
+            <span class="column-indicator"></span>
+            Done
+          </div>
+          <span class="column-count" id="countDone">0</span>
+        </div>
+        <div class="column-body" id="columnDone"></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const API = '/api/todos';
+    const addForm = document.getElementById('addForm');
+    const todoInput = document.getElementById('todoInput');
+    const dueDateInput = document.getElementById('dueDateInput');
+    const priorityInput = document.getElementById('priorityInput');
+
+    const columns = {
+      todo: document.getElementById('columnTodo'),
+      doing: document.getElementById('columnDoing'),
+      done: document.getElementById('columnDone')
+    };
+
+    const counts = {
+      todo: document.getElementById('countTodo'),
+      doing: document.getElementById('countDoing'),
+      done: document.getElementById('countDone')
+    };
+
+    const calendarIcon = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>`;
+    const trashIcon = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>`;
+
+    let draggedCard = null;
+
+    async function fetchTodos() {
+      const res = await fetch(API);
+      return res.json();
+    }
+
+    function formatDate(dateStr) {
+      if (!dateStr) return '';
+      const date = new Date(dateStr);
+      return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    }
+
+    function isOverdue(dateStr) {
+      if (!dateStr) return false;
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const dueDate = new Date(dateStr);
+      return dueDate < today;
+    }
+
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    function createCard(todo) {
+      const priorityBadge = todo.priority 
+        ? `<span class="priority-badge priority-${todo.priority}">${todo.priority}</span>` 
+        : '';
+      
+      const dueDateDisplay = todo.due_date 
+        ? `<span class="due-date ${isOverdue(todo.due_date) && todo.status !== 'done' ? 'overdue' : ''}">
+             ${calendarIcon} ${formatDate(todo.due_date)}
+           </span>` 
+        : '';
+
+      return `
+        <div class="card" draggable="true" data-id="${todo.id}">
+          <div class="card-title">${escapeHtml(todo.title)}</div>
+          ${(priorityBadge || dueDateDisplay) ? `<div class="card-meta">${priorityBadge}${dueDateDisplay}</div>` : ''}
+          <div class="card-actions">
+            <input type="date" value="${todo.due_date || ''}" onchange="updateTodo(${todo.id}, 'due_date', this.value)" title="Due date">
+            <select onchange="updateTodo(${todo.id}, 'priority', this.value)" title="Priority">
+              <option value="" ${!todo.priority ? 'selected' : ''}>-</option>
+              <option value="low" ${todo.priority === 'low' ? 'selected' : ''}>Low</option>
+              <option value="medium" ${todo.priority === 'medium' ? 'selected' : ''}>Medium</option>
+              <option value="high" ${todo.priority === 'high' ? 'selected' : ''}>High</option>
+            </select>
+            <button class="btn-delete" onclick="deleteTodo(${todo.id})" title="Delete">${trashIcon}</button>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderTodos(todos) {
+      const grouped = {
+        todo: todos.filter(t => t.status === 'todo'),
+        doing: todos.filter(t => t.status === 'doing'),
+        done: todos.filter(t => t.status === 'done')
+      };
+
+      for (const [status, items] of Object.entries(grouped)) {
+        counts[status].textContent = items.length;
+        
+        if (items.length === 0) {
+          columns[status].innerHTML = `<div class="empty-column">No tasks</div>`;
+        } else {
+          columns[status].innerHTML = items.map(createCard).join('');
+        }
+      }
+
+      setupDragAndDrop();
+    }
+
+    function setupDragAndDrop() {
+      document.querySelectorAll('.card').forEach(card => {
+        card.addEventListener('dragstart', (e) => {
+          draggedCard = card;
+          card.classList.add('dragging');
+          e.dataTransfer.effectAllowed = 'move';
+        });
+
+        card.addEventListener('dragend', () => {
+          card.classList.remove('dragging');
+          draggedCard = null;
+          document.querySelectorAll('.column').forEach(col => col.classList.remove('drag-over'));
+        });
+      });
+
+      document.querySelectorAll('.column').forEach(column => {
+        column.addEventListener('dragover', (e) => {
+          e.preventDefault();
+          column.classList.add('drag-over');
+        });
+
+        column.addEventListener('dragleave', () => {
+          column.classList.remove('drag-over');
+        });
+
+        column.addEventListener('drop', (e) => {
+          e.preventDefault();
+          column.classList.remove('drag-over');
+          
+          if (draggedCard) {
+            const todoId = draggedCard.dataset.id;
+            const newStatus = column.dataset.status;
+            moveTodo(todoId, newStatus);
+          }
+        });
+      });
+    }
+
+    async function addTodo(title, dueDate, priority) {
+      await fetch(API, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          title,
+          due_date: dueDate || null,
+          priority: priority || null,
+          status: 'todo'
+        })
+      });
+      loadTodos();
+    }
+
+    async function moveTodo(id, status) {
+      await fetch(`${API}/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status })
+      });
+      loadTodos();
+    }
+
+    async function updateTodo(id, field, value) {
+      await fetch(`${API}/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ [field]: value || null })
+      });
+      loadTodos();
+    }
+
+    async function deleteTodo(id) {
+      await fetch(`${API}/${id}`, { method: 'DELETE' });
+      loadTodos();
+    }
+
+    async function loadTodos() {
+      const todos = await fetchTodos();
+      renderTodos(todos);
+    }
+
+    addForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const title = todoInput.value.trim();
+      if (title) {
+        addTodo(title, dueDateInput.value, priorityInput.value);
+        todoInput.value = '';
+        dueDateInput.value = '';
+        priorityInput.value = '';
+        todoInput.focus();
+      }
+    });
+
+    // Initial load
+    loadTodos();
+  </script>
+</body>
+</html>
