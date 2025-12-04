@@ -201,15 +201,28 @@ cat > "$LAUNCH_AGENTS/$PLIST_NAME" << EOF
 </plist>
 EOF
 
-# Create default config if it doesn't exist
+# Default config values
+DEFAULT_CONFIG='{
+  "port": 5555,
+  "host": "localhost",
+  "hidden": false
+}'
+
+# Create or merge config
 if [ ! -f "$CONFIG_DIR/config.json" ]; then
     echo -e "${BLUE}Creating default configuration...${NC}"
-    cat > "$CONFIG_DIR/config.json" << 'EOF'
-{
-  "port": 5555,
-  "host": "localhost"
-}
-EOF
+    echo "$DEFAULT_CONFIG" > "$CONFIG_DIR/config.json"
+else
+    echo -e "${BLUE}Updating configuration (preserving existing values)...${NC}"
+    # Merge: default values + existing values (existing takes precedence)
+    MERGED=$("$BUN_PATH" -e "
+        const defaults = $DEFAULT_CONFIG;
+        const existing = JSON.parse(require('fs').readFileSync('$CONFIG_DIR/config.json', 'utf-8'));
+        const merged = { ...defaults, ...existing };
+        console.log(JSON.stringify(merged, null, 2));
+    ")
+    echo "$MERGED" > "$CONFIG_DIR/config.json"
+    echo -e "${GREEN}✓${NC} Config updated with new options"
 fi
 
 # Check if ~/.local/bin is in PATH

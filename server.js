@@ -51,6 +51,14 @@ async function handler(req) {
   const method = req.method;
 
   // API routes
+  
+  // GET /api/config - get client config
+  if (method === "GET" && pathname === "/api/config") {
+    return jsonResponse({
+      hidden: config.hidden
+    });
+  }
+
   if (pathname.startsWith("/api/todos")) {
     // GET /api/todos - list all todos
     if (method === "GET" && pathname === "/api/todos") {
@@ -127,7 +135,7 @@ async function handler(req) {
   return serveStatic(pathname);
 }
 
-console.log(`Todo app starting...`);
+console.log(`Todo app starting in ${config.isProduction ? 'PRODUCTION' : 'DEVELOPMENT'} mode...`);
 console.log(`  Config: ${config.configFile}`);
 console.log(`  Database: ${config.dbPath}`);
 console.log(`  Server: http://${config.host}:${config.port}`);

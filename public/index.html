@@ -50,6 +50,52 @@
       height: 100vh;
       padding: 20px;
       gap: 20px;
+      transition: opacity 0.3s ease, transform 0.3s ease;
+    }
+
+    .app.hidden {
+      opacity: 0;
+      transform: scale(0.95);
+      pointer-events: none;
+    }
+
+    .hidden-hint {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 20px 30px;
+      text-align: center;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s ease;
+      z-index: 9999;
+    }
+
+    .hidden-hint.visible {
+      opacity: 1;
+    }
+
+    .hidden-hint-key {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--bg-tertiary);
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.85rem;
+      margin-top: 8px;
+    }
+
+    .hidden-hint-key kbd {
+      background: var(--bg-primary);
+      padding: 2px 8px;
+      border-radius: 4px;
+      border: 1px solid var(--border);
     }
 
     .add-section {
@@ -801,7 +847,10 @@
   </style>
 </head>
 <body>
-  <div class="app">
+  <div class="hidden-hint" id="hiddenHint">
+    <div class="hidden-hint-key"><kbd>⌘</kbd> + <kbd>X</kbd> to show</div>
+  </div>
+  <div class="app" id="app">
     <div class="add-section">
       <form class="add-form" id="addForm">
         <input type="text" id="todoInput" placeholder="What needs to be done?" autocomplete="off" autofocus>
@@ -1506,8 +1555,49 @@
     // Initialize main pickers
     initDatePicker('mainDatePicker', 'dueDateInput');
     initPriorityPicker('mainPriorityPicker', 'priorityInput');
+
+    // ============ Visibility Toggle ============
+    const appEl = document.getElementById('app');
+    const hiddenHint = document.getElementById('hiddenHint');
+    let isVisible = true;
+
+    function setVisibility(visible) {
+      isVisible = visible;
+      if (visible) {
+        appEl.classList.remove('hidden');
+        hiddenHint.classList.remove('visible');
+      } else {
+        appEl.classList.add('hidden');
+        hiddenHint.classList.add('visible');
+      }
+    }
+
+    function toggleVisibility() {
+      setVisibility(!isVisible);
+    }
+
+    // Keyboard shortcut: Cmd+X (Mac) or Ctrl+X (Windows/Linux)
+    document.addEventListener('keydown', (e) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'x') {
+        e.preventDefault();
+        toggleVisibility();
+      }
+    });
+
+    // Load config and apply default visibility
+    async function loadConfig() {
+      try {
+        const res = await fetch('/api/config');
+        const config = await res.json();
+        setVisibility(!config.hidden);
+      } catch {
+        // Default to visible if config fails
+        setVisibility(true);
+      }
+    }
     
     // Initial load
+    loadConfig();
     loadTodos();
   </script>
 </body>
