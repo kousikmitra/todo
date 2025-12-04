@@ -87,25 +87,6 @@
       color: var(--text-secondary);
     }
 
-    .add-form input[type="date"],
-    .add-form select {
-      padding: 14px 16px;
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      background: var(--bg-tertiary);
-      color: var(--text-primary);
-      font-size: 0.9rem;
-      font-family: inherit;
-      cursor: pointer;
-      transition: border-color 0.2s;
-    }
-
-    .add-form input[type="date"]:focus,
-    .add-form select:focus {
-      outline: none;
-      border-color: var(--accent);
-    }
-
     .btn {
       padding: 14px 28px;
       border: none;
@@ -125,6 +106,422 @@
     .btn-primary:hover {
       background: var(--accent-hover);
       transform: translateY(-1px);
+    }
+
+    /* Custom Date Picker */
+    .date-picker-wrapper {
+      position: relative;
+    }
+
+    .date-picker-trigger {
+      padding: 14px 16px;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: var(--bg-tertiary);
+      color: var(--text-primary);
+      font-size: 0.9rem;
+      font-family: inherit;
+      cursor: pointer;
+      transition: border-color 0.2s;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-width: 140px;
+    }
+
+    .date-picker-trigger:hover {
+      border-color: var(--accent);
+    }
+
+    .date-picker-trigger.active {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(88, 166, 255, 0.15);
+    }
+
+    .date-picker-trigger svg {
+      width: 16px;
+      height: 16px;
+      color: var(--text-secondary);
+      flex-shrink: 0;
+    }
+
+    .date-picker-trigger .date-text {
+      flex: 1;
+    }
+
+    .date-picker-trigger .date-text.placeholder {
+      color: var(--text-secondary);
+    }
+
+    .date-picker-trigger .clear-btn {
+      color: var(--text-secondary);
+      padding: 2px;
+      border-radius: 4px;
+      transition: all 0.15s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .date-picker-trigger .clear-btn:hover {
+      color: var(--danger);
+      background: rgba(248, 81, 73, 0.1);
+    }
+
+    .date-picker-dropdown {
+      position: absolute;
+      top: calc(100% + 8px);
+      left: 0;
+      z-index: 1000;
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 16px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+      display: none;
+      min-width: 280px;
+    }
+
+    .date-picker-dropdown.open {
+      display: block;
+      animation: fadeIn 0.15s ease-out;
+    }
+
+    .date-picker-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 16px;
+    }
+
+    .date-picker-nav {
+      display: flex;
+      gap: 4px;
+    }
+
+    .date-picker-nav button {
+      width: 32px;
+      height: 32px;
+      border: none;
+      background: var(--bg-tertiary);
+      color: var(--text-secondary);
+      border-radius: 8px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.15s;
+    }
+
+    .date-picker-nav button:hover {
+      background: var(--accent);
+      color: var(--bg-primary);
+    }
+
+    .date-picker-nav button svg {
+      width: 16px;
+      height: 16px;
+    }
+
+    .date-picker-month-year {
+      font-weight: 600;
+      font-size: 0.95rem;
+    }
+
+    .date-picker-weekdays {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 4px;
+      margin-bottom: 8px;
+    }
+
+    .date-picker-weekday {
+      text-align: center;
+      font-size: 0.7rem;
+      font-weight: 600;
+      color: var(--text-secondary);
+      padding: 8px 0;
+      text-transform: uppercase;
+    }
+
+    .date-picker-days {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 4px;
+    }
+
+    .date-picker-day {
+      aspect-ratio: 1;
+      border: none;
+      background: transparent;
+      color: var(--text-primary);
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 0.85rem;
+      font-family: 'JetBrains Mono', monospace;
+      transition: all 0.15s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .date-picker-day:hover:not(.other-month):not(.selected) {
+      background: var(--bg-tertiary);
+    }
+
+    .date-picker-day.other-month {
+      color: var(--border);
+      cursor: default;
+    }
+
+    .date-picker-day.today {
+      border: 1px solid var(--accent);
+    }
+
+    .date-picker-day.selected {
+      background: var(--accent);
+      color: var(--bg-primary);
+      font-weight: 600;
+    }
+
+    .date-picker-day.past {
+      color: var(--text-secondary);
+    }
+
+    .date-picker-shortcuts {
+      display: flex;
+      gap: 6px;
+      margin-top: 12px;
+      padding-top: 12px;
+      border-top: 1px solid var(--border);
+    }
+
+    .date-picker-shortcut {
+      flex: 1;
+      padding: 8px 12px;
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--text-secondary);
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 0.75rem;
+      font-family: inherit;
+      transition: all 0.15s;
+    }
+
+    .date-picker-shortcut:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+
+    /* Custom Priority Picker */
+    .priority-picker-wrapper {
+      position: relative;
+    }
+
+    .priority-picker-trigger {
+      padding: 14px 16px;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: var(--bg-tertiary);
+      color: var(--text-primary);
+      font-size: 0.9rem;
+      font-family: inherit;
+      cursor: pointer;
+      transition: border-color 0.2s;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-width: 130px;
+    }
+
+    .priority-picker-trigger:hover {
+      border-color: var(--accent);
+    }
+
+    .priority-picker-trigger.active {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(88, 166, 255, 0.15);
+    }
+
+    .priority-picker-trigger .priority-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    .priority-picker-trigger .priority-dot.none {
+      border: 2px solid var(--text-secondary);
+      background: transparent;
+    }
+
+    .priority-picker-trigger .priority-dot.high { background: var(--priority-high); }
+    .priority-picker-trigger .priority-dot.medium { background: var(--priority-medium); }
+    .priority-picker-trigger .priority-dot.low { background: var(--priority-low); }
+
+    .priority-picker-trigger .priority-text {
+      flex: 1;
+    }
+
+    .priority-picker-trigger .priority-text.placeholder {
+      color: var(--text-secondary);
+    }
+
+    .priority-picker-trigger .clear-btn {
+      color: var(--text-secondary);
+      padding: 2px;
+      border-radius: 4px;
+      transition: all 0.15s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .priority-picker-trigger .clear-btn:hover {
+      color: var(--danger);
+      background: rgba(248, 81, 73, 0.1);
+    }
+
+    .priority-picker-trigger .clear-btn svg {
+      width: 14px;
+      height: 14px;
+    }
+
+    .priority-picker-trigger .chevron {
+      color: var(--text-secondary);
+      transition: transform 0.2s;
+    }
+
+    .priority-picker-trigger.active .chevron {
+      transform: rotate(180deg);
+    }
+
+    .priority-picker-trigger .chevron svg {
+      width: 14px;
+      height: 14px;
+    }
+
+    .priority-picker-dropdown {
+      position: absolute;
+      top: calc(100% + 8px);
+      left: 0;
+      z-index: 1000;
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 8px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+      display: none;
+      min-width: 160px;
+    }
+
+    .priority-picker-dropdown.open {
+      display: block;
+      animation: fadeIn 0.15s ease-out;
+    }
+
+    .priority-option {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 12px;
+      border: none;
+      background: transparent;
+      color: var(--text-primary);
+      font-size: 0.9rem;
+      font-family: inherit;
+      cursor: pointer;
+      border-radius: 8px;
+      width: 100%;
+      transition: all 0.15s;
+    }
+
+    .priority-option:hover {
+      background: var(--bg-tertiary);
+    }
+
+    .priority-option.selected {
+      background: var(--bg-tertiary);
+    }
+
+    .priority-option .priority-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+    }
+
+    .priority-option .priority-dot.none {
+      border: 2px solid var(--text-secondary);
+      background: transparent;
+    }
+
+    .priority-option .priority-dot.high { background: var(--priority-high); }
+    .priority-option .priority-dot.medium { background: var(--priority-medium); }
+    .priority-option .priority-dot.low { background: var(--priority-low); }
+
+    .priority-option .priority-label {
+      flex: 1;
+      text-align: left;
+    }
+
+    .priority-option .check-icon {
+      color: var(--accent);
+      opacity: 0;
+    }
+
+    .priority-option.selected .check-icon {
+      opacity: 1;
+    }
+
+    .priority-option .check-icon svg {
+      width: 16px;
+      height: 16px;
+    }
+
+    /* Card pickers (smaller) */
+    .card-date-picker .date-picker-trigger,
+    .card-priority-picker .priority-picker-trigger {
+      padding: 6px 8px;
+      border-radius: 6px;
+      font-size: 0.7rem;
+      min-width: auto;
+      flex: 1;
+    }
+
+    .card-date-picker .date-picker-trigger svg,
+    .card-priority-picker .priority-picker-trigger svg {
+      width: 12px;
+      height: 12px;
+    }
+
+    .card-date-picker .date-picker-dropdown {
+      min-width: 260px;
+      padding: 12px;
+    }
+
+    .card-date-picker .date-picker-day {
+      font-size: 0.75rem;
+    }
+
+    .card-priority-picker .priority-picker-trigger .priority-dot {
+      width: 8px;
+      height: 8px;
+    }
+
+    .card-priority-picker .priority-picker-dropdown {
+      min-width: 140px;
+      padding: 6px;
+    }
+
+    .card-priority-picker .priority-option {
+      padding: 8px 10px;
+      font-size: 0.8rem;
+    }
+
+    .card-priority-picker .priority-option .priority-dot {
+      width: 8px;
+      height: 8px;
     }
 
     .board {
@@ -310,26 +707,6 @@
       border-top: 1px solid var(--border);
     }
 
-    .card-actions input[type="date"],
-    .card-actions select {
-      flex: 1;
-      padding: 6px 8px;
-      border: 1px solid var(--border);
-      border-radius: 6px;
-      background: var(--bg-secondary);
-      color: var(--text-primary);
-      font-size: 0.7rem;
-      font-family: inherit;
-      cursor: pointer;
-      transition: border-color 0.15s;
-    }
-
-    .card-actions input[type="date"]:focus,
-    .card-actions select:focus {
-      outline: none;
-      border-color: var(--accent);
-    }
-
     .card-actions .btn-delete {
       padding: 6px 10px;
       border: 1px solid var(--border);
@@ -356,8 +733,8 @@
       height: 14px;
     }
 
-    .column-done .card-actions input[type="date"],
-    .column-done .card-actions select {
+    .column-done .card-actions .date-picker-wrapper,
+    .column-done .card-actions .priority-picker-wrapper {
       display: none;
     }
 
@@ -403,13 +780,23 @@
     <div class="add-section">
       <form class="add-form" id="addForm">
         <input type="text" id="todoInput" placeholder="What needs to be done?" autocomplete="off" autofocus>
-        <input type="date" id="dueDateInput" title="Due date (optional)">
-        <select id="priorityInput" title="Priority (optional)">
-          <option value="">Priority</option>
-          <option value="low">Low</option>
-          <option value="medium">Medium</option>
-          <option value="high">High</option>
-        </select>
+        <div class="date-picker-wrapper" id="mainDatePicker">
+          <div class="date-picker-trigger" onclick="toggleDatePicker('mainDatePicker')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+            <span class="date-text placeholder">Due date</span>
+          </div>
+          <div class="date-picker-dropdown"></div>
+        </div>
+        <input type="hidden" id="dueDateInput">
+        <div class="priority-picker-wrapper" id="mainPriorityPicker">
+          <div class="priority-picker-trigger" onclick="togglePriorityPicker('mainPriorityPicker')">
+            <span class="priority-dot none"></span>
+            <span class="priority-text placeholder">Priority</span>
+            <span class="chevron"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg></span>
+          </div>
+          <div class="priority-picker-dropdown"></div>
+        </div>
+        <input type="hidden" id="priorityInput">
         <button type="submit" class="btn btn-primary">Add Task</button>
       </form>
     </div>
@@ -469,14 +856,344 @@
       done: document.getElementById('countDone')
     };
 
+    // Icons
     const calendarIcon = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>`;
     const checkIcon = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>`;
+    const checkSmall = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>`;
     const trashIcon = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>`;
+    const chevronLeft = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>`;
+    const chevronRight = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>`;
+    const chevronDown = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>`;
+    const closeIcon = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>`;
 
     let draggedCard = null;
+    let activeDatePicker = null;
+    let activePriorityPicker = null;
 
     const priorityOrder = { high: 0, medium: 1, low: 2, null: 3, '': 3 };
+    const priorityLabels = { high: 'High', medium: 'Medium', low: 'Low', '': 'None' };
+    const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+    const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
+    // ============ Date Picker Functions ============
+    function initDatePicker(wrapperId, inputId, onChange) {
+      const wrapper = document.getElementById(wrapperId);
+      if (!wrapper) return;
+      
+      wrapper.dataset.inputId = inputId;
+      wrapper.dataset.currentMonth = new Date().getMonth();
+      wrapper.dataset.currentYear = new Date().getFullYear();
+      wrapper.onChange = onChange;
+      
+      renderDatePicker(wrapper);
+    }
+
+    function renderDatePicker(wrapper) {
+      const dropdown = wrapper.querySelector('.date-picker-dropdown');
+      const month = parseInt(wrapper.dataset.currentMonth);
+      const year = parseInt(wrapper.dataset.currentYear);
+      
+      dropdown.innerHTML = `
+        <div class="date-picker-header">
+          <div class="date-picker-nav">
+            <button type="button" onclick="navigateMonth('${wrapper.id}', -1)">${chevronLeft}</button>
+          </div>
+          <span class="date-picker-month-year">${monthNames[month]} ${year}</span>
+          <div class="date-picker-nav">
+            <button type="button" onclick="navigateMonth('${wrapper.id}', 1)">${chevronRight}</button>
+          </div>
+        </div>
+        <div class="date-picker-weekdays">
+          ${dayNames.map(d => `<span class="date-picker-weekday">${d}</span>`).join('')}
+        </div>
+        <div class="date-picker-days">
+          ${generateDays(wrapper, year, month)}
+        </div>
+        <div class="date-picker-shortcuts">
+          <button type="button" class="date-picker-shortcut" onclick="selectShortcut('${wrapper.id}', 'today')">Today</button>
+          <button type="button" class="date-picker-shortcut" onclick="selectShortcut('${wrapper.id}', 'tomorrow')">Tomorrow</button>
+          <button type="button" class="date-picker-shortcut" onclick="selectShortcut('${wrapper.id}', 'nextWeek')">Next Week</button>
+        </div>
+      `;
+    }
+
+    function generateDays(wrapper, year, month) {
+      const inputId = wrapper.dataset.inputId;
+      const input = document.getElementById(inputId);
+      const selectedDate = input?.value ? new Date(input.value + 'T00:00:00') : null;
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      
+      const firstDay = new Date(year, month, 1);
+      const lastDay = new Date(year, month + 1, 0);
+      const startDay = firstDay.getDay();
+      const daysInMonth = lastDay.getDate();
+      
+      const prevMonth = new Date(year, month, 0);
+      const daysInPrevMonth = prevMonth.getDate();
+      
+      let days = '';
+      
+      for (let i = startDay - 1; i >= 0; i--) {
+        const day = daysInPrevMonth - i;
+        days += `<button type="button" class="date-picker-day other-month" disabled>${day}</button>`;
+      }
+      
+      for (let day = 1; day <= daysInMonth; day++) {
+        const date = new Date(year, month, day);
+        const dateStr = formatDateValue(date);
+        const isToday = date.getTime() === today.getTime();
+        const isPast = date < today;
+        const isSelected = selectedDate && date.getTime() === selectedDate.getTime();
+        
+        let classes = 'date-picker-day';
+        if (isToday) classes += ' today';
+        if (isPast) classes += ' past';
+        if (isSelected) classes += ' selected';
+        
+        days += `<button type="button" class="${classes}" onclick="selectDate('${wrapper.id}', '${dateStr}')">${day}</button>`;
+      }
+      
+      const totalCells = Math.ceil((startDay + daysInMonth) / 7) * 7;
+      const nextMonthDays = totalCells - startDay - daysInMonth;
+      for (let day = 1; day <= nextMonthDays; day++) {
+        days += `<button type="button" class="date-picker-day other-month" disabled>${day}</button>`;
+      }
+      
+      return days;
+    }
+
+    function formatDateValue(date) {
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    }
+
+    function navigateMonth(wrapperId, direction) {
+      const wrapper = document.getElementById(wrapperId);
+      let month = parseInt(wrapper.dataset.currentMonth) + direction;
+      let year = parseInt(wrapper.dataset.currentYear);
+      
+      if (month < 0) { month = 11; year--; }
+      else if (month > 11) { month = 0; year++; }
+      
+      wrapper.dataset.currentMonth = month;
+      wrapper.dataset.currentYear = year;
+      renderDatePicker(wrapper);
+    }
+
+    function selectDate(wrapperId, dateStr) {
+      const wrapper = document.getElementById(wrapperId);
+      const inputId = wrapper.dataset.inputId;
+      const input = document.getElementById(inputId);
+      
+      if (input) input.value = dateStr;
+      updateDatePickerDisplay(wrapper, dateStr);
+      closeDatePicker(wrapper);
+      
+      if (wrapper.onChange) wrapper.onChange(dateStr);
+    }
+
+    function selectShortcut(wrapperId, shortcut) {
+      const today = new Date();
+      let date;
+      
+      switch (shortcut) {
+        case 'today': date = today; break;
+        case 'tomorrow': date = new Date(today); date.setDate(date.getDate() + 1); break;
+        case 'nextWeek': date = new Date(today); date.setDate(date.getDate() + 7); break;
+      }
+      
+      selectDate(wrapperId, formatDateValue(date));
+    }
+
+    function updateDatePickerDisplay(wrapper, dateStr) {
+      const trigger = wrapper.querySelector('.date-picker-trigger');
+      const textEl = trigger.querySelector('.date-text');
+      
+      if (dateStr) {
+        const date = new Date(dateStr + 'T00:00:00');
+        textEl.textContent = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+        textEl.classList.remove('placeholder');
+        
+        if (!trigger.querySelector('.clear-btn')) {
+          const clearBtn = document.createElement('span');
+          clearBtn.className = 'clear-btn';
+          clearBtn.innerHTML = closeIcon;
+          clearBtn.onclick = (e) => { e.stopPropagation(); clearDate(wrapper.id); };
+          trigger.appendChild(clearBtn);
+        }
+      } else {
+        textEl.textContent = 'Due date';
+        textEl.classList.add('placeholder');
+        const clearBtn = trigger.querySelector('.clear-btn');
+        if (clearBtn) clearBtn.remove();
+      }
+    }
+
+    function clearDate(wrapperId) {
+      const wrapper = document.getElementById(wrapperId);
+      const inputId = wrapper.dataset.inputId;
+      const input = document.getElementById(inputId);
+      
+      if (input) input.value = '';
+      updateDatePickerDisplay(wrapper, '');
+      if (wrapper.onChange) wrapper.onChange(null);
+    }
+
+    function toggleDatePicker(wrapperId) {
+      const wrapper = document.getElementById(wrapperId);
+      const dropdown = wrapper.querySelector('.date-picker-dropdown');
+      const trigger = wrapper.querySelector('.date-picker-trigger');
+      
+      if (activePriorityPicker) closePriorityPicker(activePriorityPicker);
+      if (activeDatePicker && activeDatePicker !== wrapper) closeDatePicker(activeDatePicker);
+      
+      if (dropdown.classList.contains('open')) {
+        closeDatePicker(wrapper);
+      } else {
+        dropdown.classList.add('open');
+        trigger.classList.add('active');
+        activeDatePicker = wrapper;
+        
+        const inputId = wrapper.dataset.inputId;
+        const input = document.getElementById(inputId);
+        if (input?.value) {
+          const date = new Date(input.value + 'T00:00:00');
+          wrapper.dataset.currentMonth = date.getMonth();
+          wrapper.dataset.currentYear = date.getFullYear();
+        } else {
+          wrapper.dataset.currentMonth = new Date().getMonth();
+          wrapper.dataset.currentYear = new Date().getFullYear();
+        }
+        renderDatePicker(wrapper);
+      }
+    }
+
+    function closeDatePicker(wrapper) {
+      const dropdown = wrapper.querySelector('.date-picker-dropdown');
+      const trigger = wrapper.querySelector('.date-picker-trigger');
+      dropdown.classList.remove('open');
+      trigger.classList.remove('active');
+      if (activeDatePicker === wrapper) activeDatePicker = null;
+    }
+
+    // ============ Priority Picker Functions ============
+    function initPriorityPicker(wrapperId, inputId, onChange) {
+      const wrapper = document.getElementById(wrapperId);
+      if (!wrapper) return;
+      
+      wrapper.dataset.inputId = inputId;
+      wrapper.onChange = onChange;
+      
+      renderPriorityPicker(wrapper);
+    }
+
+    function renderPriorityPicker(wrapper) {
+      const dropdown = wrapper.querySelector('.priority-picker-dropdown');
+      const inputId = wrapper.dataset.inputId;
+      const input = document.getElementById(inputId);
+      const currentValue = input?.value || '';
+      
+      const options = [
+        { value: 'high', label: 'High' },
+        { value: 'medium', label: 'Medium' },
+        { value: 'low', label: 'Low' },
+        { value: '', label: 'None' }
+      ];
+      
+      dropdown.innerHTML = options.map(opt => `
+        <button type="button" class="priority-option ${currentValue === opt.value ? 'selected' : ''}" onclick="selectPriority('${wrapper.id}', '${opt.value}')">
+          <span class="priority-dot ${opt.value || 'none'}"></span>
+          <span class="priority-label">${opt.label}</span>
+          <span class="check-icon">${checkSmall}</span>
+        </button>
+      `).join('');
+    }
+
+    function selectPriority(wrapperId, value) {
+      const wrapper = document.getElementById(wrapperId);
+      const inputId = wrapper.dataset.inputId;
+      const input = document.getElementById(inputId);
+      
+      if (input) input.value = value;
+      updatePriorityPickerDisplay(wrapper, value);
+      closePriorityPicker(wrapper);
+      
+      if (wrapper.onChange) wrapper.onChange(value);
+    }
+
+    function updatePriorityPickerDisplay(wrapper, value) {
+      const trigger = wrapper.querySelector('.priority-picker-trigger');
+      const dot = trigger.querySelector('.priority-dot');
+      const textEl = trigger.querySelector('.priority-text');
+      
+      dot.className = `priority-dot ${value || 'none'}`;
+      
+      if (value) {
+        textEl.textContent = priorityLabels[value];
+        textEl.classList.remove('placeholder');
+        
+        if (!trigger.querySelector('.clear-btn')) {
+          const chevron = trigger.querySelector('.chevron');
+          const clearBtn = document.createElement('span');
+          clearBtn.className = 'clear-btn';
+          clearBtn.innerHTML = closeIcon;
+          clearBtn.onclick = (e) => { e.stopPropagation(); clearPriority(wrapper.id); };
+          trigger.insertBefore(clearBtn, chevron);
+        }
+      } else {
+        textEl.textContent = 'Priority';
+        textEl.classList.add('placeholder');
+        const clearBtn = trigger.querySelector('.clear-btn');
+        if (clearBtn) clearBtn.remove();
+      }
+    }
+
+    function clearPriority(wrapperId) {
+      const wrapper = document.getElementById(wrapperId);
+      const inputId = wrapper.dataset.inputId;
+      const input = document.getElementById(inputId);
+      
+      if (input) input.value = '';
+      updatePriorityPickerDisplay(wrapper, '');
+      if (wrapper.onChange) wrapper.onChange(null);
+    }
+
+    function togglePriorityPicker(wrapperId) {
+      const wrapper = document.getElementById(wrapperId);
+      const dropdown = wrapper.querySelector('.priority-picker-dropdown');
+      const trigger = wrapper.querySelector('.priority-picker-trigger');
+      
+      if (activeDatePicker) closeDatePicker(activeDatePicker);
+      if (activePriorityPicker && activePriorityPicker !== wrapper) closePriorityPicker(activePriorityPicker);
+      
+      if (dropdown.classList.contains('open')) {
+        closePriorityPicker(wrapper);
+      } else {
+        renderPriorityPicker(wrapper);
+        dropdown.classList.add('open');
+        trigger.classList.add('active');
+        activePriorityPicker = wrapper;
+      }
+    }
+
+    function closePriorityPicker(wrapper) {
+      const dropdown = wrapper.querySelector('.priority-picker-dropdown');
+      const trigger = wrapper.querySelector('.priority-picker-trigger');
+      dropdown.classList.remove('open');
+      trigger.classList.remove('active');
+      if (activePriorityPicker === wrapper) activePriorityPicker = null;
+    }
+
+    // Close pickers when clicking outside
+    document.addEventListener('click', (e) => {
+      if (activeDatePicker && !activeDatePicker.contains(e.target)) closeDatePicker(activeDatePicker);
+      if (activePriorityPicker && !activePriorityPicker.contains(e.target)) closePriorityPicker(activePriorityPicker);
+    });
+
+    // ============ Todo Functions ============
     async function fetchTodos() {
       const res = await fetch(API);
       return res.json();
@@ -484,7 +1201,7 @@
 
     function formatDate(dateStr) {
       if (!dateStr) return '';
-      const date = new Date(dateStr);
+      const date = new Date(dateStr + 'T00:00:00');
       return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
     }
 
@@ -498,7 +1215,7 @@
       if (!dateStr) return false;
       const today = new Date();
       today.setHours(0, 0, 0, 0);
-      const dueDate = new Date(dateStr);
+      const dueDate = new Date(dateStr + 'T00:00:00');
       return dueDate < today;
     }
 
@@ -508,37 +1225,24 @@
       return div.innerHTML;
     }
 
-    /**
-     * Sorts todos for the Todo column:
-     * 1. Overdue items first, ordered by due_date descending (most overdue first)
-     * 2. Then by priority (high → medium → low → none)
-     */
     function sortTodoColumn(todos) {
       return todos.sort((a, b) => {
         const aOverdue = isOverdue(a.due_date);
         const bOverdue = isOverdue(b.due_date);
 
-        // Overdue items come first
         if (aOverdue && !bOverdue) return -1;
         if (!aOverdue && bOverdue) return 1;
 
-        // If both overdue, sort by due_date descending (most overdue first)
         if (aOverdue && bOverdue) {
-          const dateA = new Date(a.due_date);
-          const dateB = new Date(b.due_date);
-          return dateA - dateB; // Earlier date = more overdue = comes first
+          return new Date(a.due_date) - new Date(b.due_date);
         }
 
-        // For non-overdue items, sort by priority
         const aPriority = priorityOrder[a.priority] ?? 3;
         const bPriority = priorityOrder[b.priority] ?? 3;
         return aPriority - bPriority;
       });
     }
 
-    /**
-     * Sorts done items by completed_at descending (most recent first)
-     */
     function sortDoneColumn(todos) {
       return todos.sort((a, b) => {
         if (!a.completed_at && !b.completed_at) return 0;
@@ -549,42 +1253,36 @@
     }
 
     function createCard(todo, isDone = false) {
-      const priorityBadge = todo.priority 
-        ? `<span class="priority-badge priority-${todo.priority}">${todo.priority}</span>` 
-        : '';
-      
-      const overdueClass = isOverdue(todo.due_date) && todo.status !== 'done' ? 'overdue' : '';
-      
-      const dueDateDisplay = todo.due_date 
-        ? `<span class="due-date ${overdueClass}">
-             ${calendarIcon} ${formatDate(todo.due_date)}
-           </span>` 
-        : '';
-
       const completedDateDisplay = isDone && todo.completed_at
-        ? `<span class="completed-date">
-             ${checkIcon} Done ${formatDateTime(todo.completed_at)}
-           </span>`
+        ? `<div class="card-meta"><span class="completed-date">${checkIcon} Done ${formatDateTime(todo.completed_at)}</span></div>`
         : '';
 
       const cardOverdueClass = isOverdue(todo.due_date) && todo.status !== 'done' ? 'overdue' : '';
+      const datePickerId = `datePicker_${todo.id}`;
+      const priorityPickerId = `priorityPicker_${todo.id}`;
 
       return `
         <div class="card ${cardOverdueClass}" draggable="true" data-id="${todo.id}">
           <div class="card-title">${escapeHtml(todo.title)}</div>
-          <div class="card-meta">
-            ${priorityBadge}
-            ${dueDateDisplay}
-            ${completedDateDisplay}
-          </div>
+          ${completedDateDisplay}
           <div class="card-actions">
-            <input type="date" value="${todo.due_date || ''}" onchange="updateTodo(${todo.id}, 'due_date', this.value)" title="Due date">
-            <select onchange="updateTodo(${todo.id}, 'priority', this.value)" title="Priority">
-              <option value="" ${!todo.priority ? 'selected' : ''}>-</option>
-              <option value="low" ${todo.priority === 'low' ? 'selected' : ''}>Low</option>
-              <option value="medium" ${todo.priority === 'medium' ? 'selected' : ''}>Medium</option>
-              <option value="high" ${todo.priority === 'high' ? 'selected' : ''}>High</option>
-            </select>
+            <div class="date-picker-wrapper card-date-picker" id="${datePickerId}">
+              <div class="date-picker-trigger" onclick="toggleDatePicker('${datePickerId}')">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+                <span class="date-text ${todo.due_date ? '' : 'placeholder'}">${todo.due_date ? formatDate(todo.due_date) : 'Date'}</span>
+              </div>
+              <div class="date-picker-dropdown"></div>
+            </div>
+            <input type="hidden" id="dateInput_${todo.id}" value="${todo.due_date || ''}">
+            <div class="priority-picker-wrapper card-priority-picker" id="${priorityPickerId}">
+              <div class="priority-picker-trigger" onclick="togglePriorityPicker('${priorityPickerId}')">
+                <span class="priority-dot ${todo.priority || 'none'}"></span>
+                <span class="priority-text ${todo.priority ? '' : 'placeholder'}">${todo.priority ? priorityLabels[todo.priority] : 'Priority'}</span>
+                <span class="chevron">${chevronDown}</span>
+              </div>
+              <div class="priority-picker-dropdown"></div>
+            </div>
+            <input type="hidden" id="priorityInput_${todo.id}" value="${todo.priority || ''}">
             <button class="btn-delete" onclick="deleteTodo(${todo.id})" title="Delete">${trashIcon}</button>
           </div>
         </div>
@@ -598,7 +1296,6 @@
         done: todos.filter(t => t.status === 'done')
       };
 
-      // Apply sorting
       grouped.todo = sortTodoColumn(grouped.todo);
       grouped.done = sortDoneColumn(grouped.done);
 
@@ -611,6 +1308,27 @@
           columns[status].innerHTML = items.map(todo => createCard(todo, status === 'done')).join('');
         }
       }
+
+      // Initialize pickers for cards
+      todos.forEach(todo => {
+        const datePickerId = `datePicker_${todo.id}`;
+        const dateInputId = `dateInput_${todo.id}`;
+        const dateWrapper = document.getElementById(datePickerId);
+        if (dateWrapper) {
+          dateWrapper.dataset.inputId = dateInputId;
+          dateWrapper.dataset.currentMonth = new Date().getMonth();
+          dateWrapper.dataset.currentYear = new Date().getFullYear();
+          dateWrapper.onChange = (value) => updateTodo(todo.id, 'due_date', value);
+        }
+
+        const priorityPickerId = `priorityPicker_${todo.id}`;
+        const priorityInputId = `priorityInput_${todo.id}`;
+        const priorityWrapper = document.getElementById(priorityPickerId);
+        if (priorityWrapper) {
+          priorityWrapper.dataset.inputId = priorityInputId;
+          priorityWrapper.onChange = (value) => updateTodo(todo.id, 'priority', value);
+        }
+      });
 
       setupDragAndDrop();
     }
@@ -703,10 +1421,16 @@
         todoInput.value = '';
         dueDateInput.value = '';
         priorityInput.value = '';
+        updateDatePickerDisplay(document.getElementById('mainDatePicker'), '');
+        updatePriorityPickerDisplay(document.getElementById('mainPriorityPicker'), '');
         todoInput.focus();
       }
     });
 
+    // Initialize main pickers
+    initDatePicker('mainDatePicker', 'dueDateInput');
+    initPriorityPicker('mainPriorityPicker', 'priorityInput');
+    
     // Initial load
     loadTodos();
   </script>
