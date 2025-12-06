@@ -1,6 +1,8 @@
 import db from "../db.js";
 import { parseBody, jsonResponse } from "../utils.js";
 
+const DEFAULT_WEATHER_REFRESH_SECONDS = 3600; // 1 hour
+
 /**
  * Geocodes a location name to coordinates using Open-Meteo Geocoding API
  */
@@ -24,27 +26,55 @@ async function geocodeLocation(locationName) {
 }
 
 /**
- * Fetches weather data from Open-Meteo API
+ * Saves a widget setting to the database
  */
-async function fetchWeatherData(settings) {
+function saveSetting(widgetId, key, value) {
+  db.run(
+    `INSERT INTO widget_settings (widget_id, key, value) 
+     VALUES (?, ?, ?) 
+     ON CONFLICT(widget_id, key) DO UPDATE SET value = ?`,
+    [widgetId, key, String(value), String(value)]
+  );
+}
+
+/**
+ * Fetches weather data from Open-Meteo API with caching
+ */
+async function fetchWeatherData(widgetId, settings, forceRefresh = false) {
+  const refreshPeriod = parseInt(settings.refresh_period) || DEFAULT_WEATHER_REFRESH_SECONDS;
+  const lastFetched = parseInt(settings.last_fetched) || 0;
+  const now = Math.floor(Date.now() / 1000);
+
+  // Check if we have valid cached data (skip if force refresh)
+  if (!forceRefresh && settings.cached_data && (now - lastFetched) < refreshPeriod) {
+    try {
+      return jsonResponse(JSON.parse(settings.cached_data));
+    } catch {
+      // Invalid cached data, continue to fetch
+    }
+  }
+
   try {
     let lat, lon;
     const units = settings.units || 'celsius';
 
-    // Prioritize location name over stored coordinates
-    if (settings.location) {
-      const coords = await geocodeLocation(settings.location);
-      if (!coords) {
-        return jsonResponse({ error: `Could not find location: ${settings.location}` }, 404);
-      }
-      lat = coords.latitude;
-      lon = coords.longitude;
-    } else if (settings.latitude && settings.longitude) {
-      // Fall back to stored coordinates only if no location name is provided
+    // Use cached coordinates if available, otherwise geocode and cache
+    if (settings.latitude && settings.longitude) {
       lat = settings.latitude;
       lon = settings.longitude;
+    } else if (settings.location) {
+      const coords = await geocodeLocation(settings.location);
+      if (coords) {
+        lat = coords.latitude;
+        lon = coords.longitude;
+        // Cache the coordinates for future requests
+        saveSetting(widgetId, 'latitude', lat);
+        saveSetting(widgetId, 'longitude', lon);
+      } else {
+        return jsonResponse({ error: `Could not find location: ${settings.location}` }, 404);
+      }
     } else {
-      // Default to New York if nothing is provided
+      // Default to New York
       lat = '40.7128';
       lon = '-74.0060';
     }
@@ -54,12 +84,29 @@ async function fetchWeatherData(settings) {
 
     const response = await fetch(apiUrl);
     if (!response.ok) {
+      // Return cached data if available, even if stale
+      if (settings.cached_data) {
+        try {
+          return jsonResponse(JSON.parse(settings.cached_data));
+        } catch { }
+      }
       return jsonResponse({ error: "Failed to fetch weather data" }, 502);
     }
 
     const data = await response.json();
+
+    // Cache the response
+    saveSetting(widgetId, 'cached_data', JSON.stringify(data));
+    saveSetting(widgetId, 'last_fetched', now);
+
     return jsonResponse(data);
   } catch (error) {
+    // Return cached data if available on error
+    if (settings.cached_data) {
+      try {
+        return jsonResponse(JSON.parse(settings.cached_data));
+      } catch { }
+    }
     return jsonResponse({ error: "Weather service unavailable" }, 503);
   }
 }
@@ -211,9 +258,15 @@ export async function handleWidgetsRoutes(req, pathname, method) {
       return jsonResponse({ error: "Widget not found" }, 404);
     }
 
-    // If location is being updated, clear old coordinates to force re-geocoding
-    if (body.location !== undefined && existing.type === 'weather') {
-      db.run("DELETE FROM widget_settings WHERE widget_id = ? AND key IN ('latitude', 'longitude')", [id]);
+    // Clear cached weather data when location or units change
+    if (existing.type === 'weather') {
+      if (body.location !== undefined) {
+        // Location changed - clear coordinates and cache
+        db.run("DELETE FROM widget_settings WHERE widget_id = ? AND key IN ('latitude', 'longitude', 'cached_data', 'last_fetched')", [id]);
+      } else if (body.units !== undefined) {
+        // Units changed - clear cache only (keep coordinates)
+        db.run("DELETE FROM widget_settings WHERE widget_id = ? AND key IN ('cached_data', 'last_fetched')", [id]);
+      }
     }
 
     for (const [key, value] of Object.entries(body || {})) {
@@ -229,7 +282,7 @@ export async function handleWidgetsRoutes(req, pathname, method) {
   }
 
   // GET /api/widgets/:id/data - proxy to fetch widget-specific data
-  const dataMatch = pathname.match(/^\/api\/widgets\/(\d+)\/data$/);
+  const dataMatch = pathname.match(/^\/api\/widgets\/(\d+)\/data/);
   if (method === "GET" && dataMatch) {
     const id = dataMatch[1];
     const widget = db.query("SELECT * FROM widgets WHERE id = ?").get(id);
@@ -238,11 +291,15 @@ export async function handleWidgetsRoutes(req, pathname, method) {
       return jsonResponse({ error: "Widget not found" }, 404);
     }
 
+    // Check for force refresh query param
+    const url = new URL(req.url, 'http://localhost');
+    const forceRefresh = url.searchParams.get('force') === 'true';
+
     const settingsObj = getWidgetSettings(id);
 
     // Route to appropriate data fetcher based on widget type
     if (widget.type === 'weather') {
-      return await fetchWeatherData(settingsObj);
+      return await fetchWeatherData(id, settingsObj, forceRefresh);
     } else if (widget.type === 'hackernews') {
       return await fetchHackerNewsData(settingsObj);
     }

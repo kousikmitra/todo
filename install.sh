@@ -48,6 +48,14 @@ mkdir -p "$DATA_DIR"
 mkdir -p "$LOGS_DIR"
 mkdir -p "$LAUNCH_AGENTS"
 
+# Detect NODE_EXTRA_CA_CERTS from current environment (for corporate proxies like Zscaler)
+EXTRA_CA_CERTS="${NODE_EXTRA_CA_CERTS:-}"
+if [ -n "$EXTRA_CA_CERTS" ] && [ -f "$EXTRA_CA_CERTS" ]; then
+    echo -e "${GREEN}✓${NC} Detected corporate CA certificate: $EXTRA_CA_CERTS"
+else
+    EXTRA_CA_CERTS=""
+fi
+
 # Copy application files
 echo -e "${BLUE}Copying application files...${NC}"
 cp "$SCRIPT_DIR/server.js" "$INSTALL_DIR/"
@@ -197,7 +205,9 @@ cat > "$LAUNCH_AGENTS/$PLIST_NAME" << EOF
     <key>EnvironmentVariables</key>
     <dict>
         <key>PATH</key>
-        <string>/usr/local/bin:/usr/bin:/bin:$HOME/.bun/bin</string>
+        <string>/usr/local/bin:/usr/bin:/bin:$HOME/.bun/bin</string>$(if [ -n "$EXTRA_CA_CERTS" ]; then echo "
+        <key>NODE_EXTRA_CA_CERTS</key>
+        <string>$EXTRA_CA_CERTS</string>"; fi)
     </dict>
 </dict>
 </plist>

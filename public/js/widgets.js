@@ -213,13 +213,27 @@ async function deleteWidget(id) {
   }
 }
 
-async function fetchWidgetData(id) {
+async function fetchWidgetData(id, force = false) {
   try {
-    const res = await fetch(`${WIDGET_API}/${id}/data`);
+    const url = force ? `${WIDGET_API}/${id}/data?force=true` : `${WIDGET_API}/${id}/data`;
+    const res = await fetch(url);
     return await res.json();
   } catch (error) {
     console.error('Failed to fetch widget data:', error);
     return { error: 'Failed to load data' };
+  }
+}
+
+async function forceRefreshWidget(widget) {
+  const contentEl = document.getElementById(`widget-content-${widget.id}`);
+  if (!contentEl) return;
+
+  const data = await fetchWidgetData(widget.id, true);
+
+  if (widget.type === 'weather') {
+    contentEl.innerHTML = renderWeatherContent(data, widget.settings);
+  } else if (widget.type === 'hackernews') {
+    contentEl.innerHTML = renderHackerNewsContent(data);
   }
 }
 
@@ -261,6 +275,7 @@ function createWidgetHTML(widget) {
           ${typeDef.name}
         </div>
         <div class="widget-actions">
+          <button class="widget-action-btn refresh" title="Refresh">${icons.refresh}</button>
           <button class="widget-action-btn settings" title="Settings">${icons.gear}</button>
           <button class="widget-action-btn close" title="Remove widget">${icons.close}</button>
         </div>
@@ -281,6 +296,7 @@ function setupWidgetInteractions(widget) {
   const resizeHandle = el.querySelector('.widget-resize-handle');
   const closeBtn = el.querySelector('.widget-action-btn.close');
   const settingsBtn = el.querySelector('.widget-action-btn.settings');
+  const refreshBtn = el.querySelector('.widget-action-btn.refresh');
 
   // Drag functionality
   let isDragging = false;
@@ -389,6 +405,14 @@ function setupWidgetInteractions(widget) {
   // Close button
   closeBtn.addEventListener('click', () => deleteWidget(widget.id));
 
+  // Refresh button
+  refreshBtn.addEventListener('click', async (e) => {
+    e.stopPropagation();
+    refreshBtn.classList.add('spinning');
+    await forceRefreshWidget(widget);
+    refreshBtn.classList.remove('spinning');
+  });
+
   // Settings button
   settingsBtn.addEventListener('click', (e) => {
     e.stopPropagation();
@@ -469,6 +493,7 @@ function toggleWidgetSettings(widget, el) {
 
 function getWidgetSettingsHTML(widget) {
   if (widget.type === 'weather') {
+    const refreshPeriod = widget.settings.refresh_period || '3600';
     return `
       <div class="widget-settings-header">Weather Settings</div>
       <form class="widget-settings-body">
@@ -481,6 +506,15 @@ function getWidgetSettingsHTML(widget) {
           <select name="units" class="widget-settings-select">
             <option value="celsius" ${widget.settings.units === 'celsius' ? 'selected' : ''}>Celsius</option>
             <option value="fahrenheit" ${widget.settings.units === 'fahrenheit' ? 'selected' : ''}>Fahrenheit</option>
+          </select>
+        </div>
+        <div class="widget-settings-field">
+          <label class="widget-settings-label">Refresh</label>
+          <select name="refresh_period" class="widget-settings-select">
+            <option value="1800" ${refreshPeriod === '1800' ? 'selected' : ''}>30 minutes</option>
+            <option value="3600" ${refreshPeriod === '3600' ? 'selected' : ''}>1 hour</option>
+            <option value="7200" ${refreshPeriod === '7200' ? 'selected' : ''}>2 hours</option>
+            <option value="14400" ${refreshPeriod === '14400' ? 'selected' : ''}>4 hours</option>
           </select>
         </div>
         <div class="widget-settings-actions">
