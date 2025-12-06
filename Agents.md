@@ -18,15 +18,58 @@ A Kanban-style todo board application with widget dashboard support. Built with 
 
 ```
 todo/
-├── server.js      # HTTP server, API routes, request handling
-├── db.js          # SQLite database initialization and migrations
-├── config.js      # Configuration loading (dev/prod paths, ports)
+├── server.js          # HTTP server entry point, static file serving
+├── db.js              # SQLite database initialization and migrations
+├── config.js          # Configuration loading (dev/prod paths, ports)
+├── utils.js           # Shared utilities (parseBody, jsonResponse)
+├── routes/
+│   ├── todos.js       # Todo CRUD API handlers
+│   └── widgets.js     # Widget API handlers + external data fetchers
 ├── public/
-│   └── index.html # Single-page frontend (HTML + JS + CSS)
-├── install.sh     # macOS installation script (launchd service)
-├── uninstall.sh   # Cleanup script
-└── package.json   # Bun scripts and metadata
+│   ├── index.html     # Main HTML structure
+│   ├── css/
+│   │   ├── common.css   # Shared styles, variables, layout
+│   │   ├── todos.css    # Kanban board and todo card styles
+│   │   └── widgets.css  # Widget dashboard styles
+│   └── js/
+│       ├── common.js    # Shared utilities, API helpers
+│       ├── todos.js     # Todo board logic, drag-and-drop
+│       └── widgets.js   # Widget rendering and interactions
+├── install.sh         # macOS installation script (launchd service)
+├── uninstall.sh       # Cleanup script
+└── package.json       # Bun scripts and metadata
 ```
+
+## Backend Architecture
+
+### Entry Point (`server.js`)
+- Initializes Bun HTTP server
+- Routes requests to appropriate handlers
+- Serves static files from `public/`
+
+### Route Handlers (`routes/`)
+- **`todos.js`**: Exports `handleTodosRoutes(req, pathname, method)` for CRUD operations
+- **`widgets.js`**: Exports `handleWidgetsRoutes(req, pathname, method)` for widget management + data fetching
+
+### Utilities (`utils.js`)
+- `parseBody(req)` - Parses JSON body with error handling
+- `jsonResponse(data, status)` - Returns JSON with proper headers
+
+## Frontend Architecture
+
+### HTML (`public/index.html`)
+- Single page with sections for todos board and widgets dashboard
+- Loads modular CSS and JS files
+
+### CSS (`public/css/`)
+- **`common.css`**: CSS variables, reset, layout grid, shared components
+- **`todos.css`**: Kanban columns, todo cards, priority badges, date picker
+- **`widgets.css`**: Widget grid, individual widget styles (weather, HN)
+
+### JavaScript (`public/js/`)
+- **`common.js`**: API utilities, shared state, DOM helpers
+- **`todos.js`**: Board rendering, drag-drop, CRUD operations
+- **`widgets.js`**: Widget grid, rendering, settings management
 
 ## Database Schema
 
@@ -61,7 +104,7 @@ todo/
 
 ## API Routes
 
-### Todos
+### Todos (`routes/todos.js`)
 | Method | Endpoint | Description |
 |--------|----------|-------------|
 | GET | `/api/todos` | List all todos (ordered by created_at DESC) |
@@ -69,7 +112,7 @@ todo/
 | PUT | `/api/todos/:id` | Update todo |
 | DELETE | `/api/todos/:id` | Delete todo |
 
-### Widgets
+### Widgets (`routes/widgets.js`)
 | Method | Endpoint | Description |
 |--------|----------|-------------|
 | GET | `/api/widgets` | List all widgets with settings |
@@ -80,7 +123,7 @@ todo/
 | PUT | `/api/widgets/:id/settings` | Update widget settings |
 | GET | `/api/widgets/:id/data` | Fetch widget data (weather, HN) |
 
-### Config
+### Config (`server.js`)
 | Method | Endpoint | Description |
 |--------|----------|-------------|
 | GET | `/api/config` | Get client-side config |
@@ -110,26 +153,29 @@ bun run start    # Start in production mode
 
 ## Code Patterns
 
-### Response Helpers
-- `jsonResponse(data, status)` - Returns JSON with proper headers
-- `parseBody(req)` - Parses JSON body with error handling
-
-### Static File Serving
-- All non-API routes serve from `public/` directory
-- Default route serves `index.html`
+### Route Handler Pattern
+Each route module exports a single async function that:
+1. Matches pathname/method combinations
+2. Returns `Response` if matched, `null` if not
+3. Server tries each handler in sequence
 
 ### Database Access
 - Synchronous queries via `db.query().all()` or `db.query().get()`
 - Mutations via `db.run()` returning `{ lastInsertRowid }`
 
+### Widget Data Fetching
+- `fetchWeatherData(settings)` - Proxies Open-Meteo API
+- `fetchHackerNewsData(settings)` - Proxies HackerNews Firebase API
+
 ## Important Notes for AI Agents
 
-1. **Bun-specific APIs**: Uses `Bun.file()`, `bun:sqlite`, and native `fetch` in server
-2. **No Express/Hono**: Raw request handling with `Request`/`Response` objects
-3. **Single HTML file**: Frontend is self-contained in `public/index.html`
-4. **Migration pattern**: Database columns added with `try/catch` for backwards compatibility
-5. **Widget data proxy**: Server proxies external API calls (Open-Meteo, HackerNews)
-6. **ES Modules**: All imports use `import`/`export`, file extensions required
+1. **Modular Backend**: Route handlers are in `routes/`, utilities in `utils.js`
+2. **Modular Frontend**: CSS/JS split by feature (common, todos, widgets)
+3. **Bun-specific APIs**: Uses `Bun.file()`, `bun:sqlite`, and native `fetch` in server
+4. **No Express/Hono**: Raw request handling with `Request`/`Response` objects
+5. **Migration pattern**: Database columns added with `try/catch` for backwards compatibility
+6. **Widget data proxy**: Server proxies external API calls (Open-Meteo, HackerNews)
+7. **ES Modules**: All imports use `import`/`export`, file extensions required
 
 ## External Services
 
@@ -147,4 +193,3 @@ bun run start    # Start in production mode
 | Application | `~/.local/share/todos/` |
 | Logs | `~/Library/Logs/todos.log` |
 | Service | `~/Library/LaunchAgents/com.todos.app.plist` |
-

@@ -1,0 +1,625 @@
+/* ============ Dashboard ============ */
+.dashboard {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 0;
+  background: var(--bg-primary);
+  background-image: radial-gradient(
+      ellipse at top right,
+      rgba(210, 153, 34, 0.08) 0%,
+      transparent 40%
+    ),
+    radial-gradient(
+      ellipse at bottom left,
+      rgba(248, 81, 73, 0.06) 0%,
+      transparent 40%
+    );
+  z-index: 100;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+  overflow: hidden;
+}
+
+.dashboard.visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.widget-grid {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  background-image: linear-gradient(rgba(48, 54, 61, 0.2) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(48, 54, 61, 0.2) 1px, transparent 1px);
+  background-size: 40px 40px;
+  overflow: hidden;
+}
+
+/* ============ Widgets ============ */
+.widget {
+  position: absolute;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  transition: box-shadow 0.2s, border-color 0.2s;
+  min-width: 200px;
+  min-height: 160px;
+}
+
+.widget:hover {
+  border-color: rgba(88, 166, 255, 0.3);
+}
+
+.widget.dragging {
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
+  border-color: var(--accent);
+  z-index: 1000 !important;
+  cursor: grabbing;
+}
+
+.widget.resizing {
+  transition: none;
+}
+
+.widget-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--border);
+  cursor: grab;
+  flex-shrink: 0;
+  user-select: none;
+}
+
+.widget-header:active {
+  cursor: grabbing;
+}
+
+.widget-title {
+  font-weight: 600;
+  font-size: 0.85rem;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.widget-title-icon {
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.widget-title-icon svg {
+  width: 14px;
+  height: 14px;
+}
+
+.widget-title-icon.weather {
+  background: linear-gradient(135deg, #fbbf24, #f59e0b);
+  color: white;
+}
+
+.widget-title-icon.hackernews {
+  background: linear-gradient(135deg, #ff6600, #cc5200);
+  color: white;
+}
+
+.widget-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.widget-action-btn {
+  width: 28px;
+  height: 28px;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  border-radius: 6px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s;
+}
+
+.widget-action-btn:hover {
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+}
+
+.widget-action-btn.close:hover {
+  background: rgba(248, 81, 73, 0.15);
+  color: var(--danger);
+}
+
+.widget-action-btn svg {
+  width: 14px;
+  height: 14px;
+}
+
+.widget-content {
+  flex: 1;
+  padding: 14px;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.widget-content::-webkit-scrollbar {
+  width: 6px;
+}
+
+.widget-content::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.widget-content::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 3px;
+}
+
+.widget-resize-handle {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  width: 20px;
+  height: 20px;
+  cursor: se-resize;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.widget:hover .widget-resize-handle {
+  opacity: 1;
+}
+
+.widget-resize-handle::before {
+  content: "";
+  position: absolute;
+  bottom: 4px;
+  right: 4px;
+  width: 8px;
+  height: 8px;
+  border-right: 2px solid var(--text-secondary);
+  border-bottom: 2px solid var(--text-secondary);
+}
+
+.widget-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: var(--text-secondary);
+}
+
+.widget-error {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: var(--danger);
+  text-align: center;
+  gap: 8px;
+}
+
+.widget-error svg {
+  width: 32px;
+  height: 32px;
+  opacity: 0.6;
+}
+
+.widget-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: var(--text-secondary);
+  text-align: center;
+  gap: 16px;
+}
+
+.widget-empty svg {
+  width: 48px;
+  height: 48px;
+  opacity: 0.4;
+}
+
+/* ============ Command Palette ============ */
+.command-palette-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(4px);
+  z-index: 10000;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: 15vh;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+}
+
+.command-palette-overlay.visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.command-palette {
+  width: 480px;
+  max-width: 90vw;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+  overflow: hidden;
+  transform: scale(0.95) translateY(-10px);
+  transition: transform 0.2s ease;
+}
+
+.command-palette-overlay.visible .command-palette {
+  transform: scale(1) translateY(0);
+}
+
+.command-palette-header {
+  padding: 16px;
+  border-bottom: 1px solid var(--border);
+}
+
+.command-palette-input {
+  width: 100%;
+  padding: 12px 16px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+  font-size: 1rem;
+  font-family: inherit;
+}
+
+.command-palette-input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(88, 166, 255, 0.15);
+}
+
+.command-palette-input::placeholder {
+  color: var(--text-secondary);
+}
+
+.command-palette-list {
+  max-height: 320px;
+  overflow-y: auto;
+  padding: 8px;
+}
+
+.command-palette-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.command-palette-item:hover,
+.command-palette-item.selected {
+  background: var(--bg-tertiary);
+}
+
+.command-palette-item-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.command-palette-item-icon svg {
+  width: 18px;
+  height: 18px;
+}
+
+.command-palette-item-icon.weather {
+  background: linear-gradient(135deg, #fbbf24, #f59e0b);
+  color: white;
+}
+
+.command-palette-item-icon.hackernews {
+  background: linear-gradient(135deg, #ff6600, #cc5200);
+  color: white;
+}
+
+.command-palette-item-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.command-palette-item-name {
+  font-weight: 500;
+  font-size: 0.95rem;
+}
+
+.command-palette-item-desc {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  margin-top: 2px;
+}
+
+.command-palette-empty {
+  padding: 32px;
+  text-align: center;
+  color: var(--text-secondary);
+}
+
+/* ============ Widget Settings Popover ============ */
+.widget-settings-popover {
+  position: fixed;
+  width: 300px;
+  max-height: 80vh;
+  overflow-y: auto;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: 0 12px 48px rgba(0, 0, 0, 0.5);
+  z-index: 10000;
+  display: none;
+}
+
+.widget-settings-popover.open {
+  display: block;
+  animation: fadeIn 0.15s ease-out;
+}
+
+.widget-settings-header {
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--border);
+  font-weight: 600;
+  font-size: 0.85rem;
+}
+
+.widget-settings-body {
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.widget-settings-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.widget-settings-label {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.widget-settings-input {
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+  font-size: 0.9rem;
+  font-family: inherit;
+}
+
+.widget-settings-input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.widget-settings-select {
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+  font-size: 0.9rem;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.widget-settings-select:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.widget-settings-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.widget-settings-btn {
+  flex: 1;
+  padding: 10px 16px;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.widget-settings-btn.primary {
+  background: var(--accent);
+  color: var(--bg-primary);
+}
+
+.widget-settings-btn.primary:hover {
+  background: var(--accent-hover);
+}
+
+.widget-settings-btn.secondary {
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+}
+
+.widget-settings-btn.secondary:hover {
+  background: var(--border);
+}
+
+/* ============ Weather Widget Content ============ */
+.weather-current {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.weather-icon {
+  font-size: 2.5rem;
+}
+
+.weather-temp {
+  font-size: 2rem;
+  font-weight: 700;
+}
+
+.weather-details {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+}
+
+.weather-location {
+  font-size: 0.9rem;
+  font-weight: 500;
+  margin-bottom: 4px;
+}
+
+.weather-condition {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+}
+
+.weather-forecast {
+  display: flex;
+  gap: 8px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+
+.forecast-day {
+  flex: 1;
+  text-align: center;
+  padding: 8px 4px;
+  background: var(--bg-tertiary);
+  border-radius: 8px;
+}
+
+.forecast-name {
+  font-size: 0.7rem;
+  color: var(--text-secondary);
+  margin-bottom: 4px;
+}
+
+.forecast-icon {
+  font-size: 1.2rem;
+  margin-bottom: 4px;
+}
+
+.forecast-temps {
+  font-size: 0.75rem;
+  font-family: "JetBrains Mono", monospace;
+}
+
+.forecast-high {
+  font-weight: 600;
+}
+
+.forecast-low {
+  color: var(--text-secondary);
+}
+
+/* ============ Hacker News Widget Content ============ */
+.hn-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.hn-item {
+  display: flex;
+  gap: 10px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.hn-item:last-child {
+  border-bottom: none;
+}
+
+.hn-rank {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  width: 20px;
+  text-align: right;
+  flex-shrink: 0;
+}
+
+.hn-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.hn-title {
+  font-size: 0.85rem;
+  line-height: 1.4;
+  color: var(--text-primary);
+  text-decoration: none;
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.hn-title:hover {
+  color: var(--accent);
+}
+
+.hn-meta {
+  font-size: 0.7rem;
+  color: var(--text-secondary);
+  margin-top: 4px;
+  display: flex;
+  gap: 10px;
+}
+
+.hn-meta a {
+  color: var(--text-secondary);
+  text-decoration: none;
+}
+
+.hn-meta a:hover {
+  color: var(--accent);
+}
