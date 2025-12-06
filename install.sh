@@ -53,8 +53,10 @@ echo -e "${BLUE}Copying application files...${NC}"
 cp "$SCRIPT_DIR/server.js" "$INSTALL_DIR/"
 cp "$SCRIPT_DIR/db.js" "$INSTALL_DIR/"
 cp "$SCRIPT_DIR/config.js" "$INSTALL_DIR/"
+cp "$SCRIPT_DIR/utils.js" "$INSTALL_DIR/"
 cp "$SCRIPT_DIR/package.json" "$INSTALL_DIR/"
 cp -r "$SCRIPT_DIR/public" "$INSTALL_DIR/"
+cp -r "$SCRIPT_DIR/routes" "$INSTALL_DIR/"
 
 # Create launcher script with service management
 echo -e "${BLUE}Creating launcher script...${NC}"
