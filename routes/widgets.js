@@ -2,13 +2,52 @@ import db from "../db.js";
 import { parseBody, jsonResponse } from "../utils.js";
 
 /**
+ * Geocodes a location name to coordinates using Open-Meteo Geocoding API
+ */
+async function geocodeLocation(locationName) {
+  try {
+    const geoUrl = `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(locationName)}&count=1`;
+    const geoRes = await fetch(geoUrl);
+    if (!geoRes.ok) return null;
+
+    const geoData = await geoRes.json();
+    if (geoData.results?.[0]) {
+      return {
+        latitude: geoData.results[0].latitude,
+        longitude: geoData.results[0].longitude
+      };
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Fetches weather data from Open-Meteo API
  */
 async function fetchWeatherData(settings) {
   try {
-    const lat = settings.latitude || '40.7128';
-    const lon = settings.longitude || '-74.0060';
+    let lat, lon;
     const units = settings.units || 'celsius';
+
+    // Prioritize location name over stored coordinates
+    if (settings.location) {
+      const coords = await geocodeLocation(settings.location);
+      if (!coords) {
+        return jsonResponse({ error: `Could not find location: ${settings.location}` }, 404);
+      }
+      lat = coords.latitude;
+      lon = coords.longitude;
+    } else if (settings.latitude && settings.longitude) {
+      // Fall back to stored coordinates only if no location name is provided
+      lat = settings.latitude;
+      lon = settings.longitude;
+    } else {
+      // Default to New York if nothing is provided
+      lat = '40.7128';
+      lon = '-74.0060';
+    }
 
     const tempUnit = units === 'fahrenheit' ? 'fahrenheit' : 'celsius';
     const apiUrl = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,weather_code,wind_speed_10m&daily=weather_code,temperature_2m_max,temperature_2m_min&temperature_unit=${tempUnit}&timezone=auto&forecast_days=5`;
@@ -170,6 +209,11 @@ export async function handleWidgetsRoutes(req, pathname, method) {
 
     if (!existing) {
       return jsonResponse({ error: "Widget not found" }, 404);
+    }
+
+    // If location is being updated, clear old coordinates to force re-geocoding
+    if (body.location !== undefined && existing.type === 'weather') {
+      db.run("DELETE FROM widget_settings WHERE widget_id = ? AND key IN ('latitude', 'longitude')", [id]);
     }
 
     for (const [key, value] of Object.entries(body || {})) {

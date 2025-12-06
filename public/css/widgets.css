@@ -5,7 +5,6 @@
   left: 0;
   right: 0;
   bottom: 0;
-  padding: 0;
   background: var(--bg-primary);
   background-image: radial-gradient(
       ellipse at top right,
@@ -21,7 +20,7 @@
   opacity: 0;
   pointer-events: none;
   transition: opacity 0.3s ease;
-  overflow: hidden;
+  overflow: auto;
 }
 
 .dashboard.visible {
@@ -31,12 +30,13 @@
 
 .widget-grid {
   position: relative;
-  width: 100%;
-  height: 100%;
+  width: calc(100% - 40px);
+  min-height: calc(100% - 40px);
+  margin: 20px;
   background-image: linear-gradient(rgba(48, 54, 61, 0.2) 1px, transparent 1px),
     linear-gradient(90deg, rgba(48, 54, 61, 0.2) 1px, transparent 1px);
   background-size: 40px 40px;
-  overflow: hidden;
+  overflow: visible;
 }
 
 /* ============ Widgets ============ */
@@ -155,6 +155,12 @@
   padding: 14px;
   overflow-y: auto;
   overflow-x: hidden;
+  scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
+}
+
+.widget-content:hover {
+  scrollbar-color: var(--border) transparent;
 }
 
 .widget-content::-webkit-scrollbar {
@@ -166,8 +172,13 @@
 }
 
 .widget-content::-webkit-scrollbar-thumb {
-  background: var(--border);
+  background: transparent;
   border-radius: 3px;
+  transition: background 0.3s ease;
+}
+
+.widget-content:hover::-webkit-scrollbar-thumb {
+  background: var(--border);
 }
 
 .widget-resize-handle {
@@ -622,4 +633,66 @@
 
 .hn-meta a:hover {
   color: var(--accent);
+}
+
+/* ============ Responsive Dashboard ============ */
+@media (max-width: 900px) {
+  .widget-grid {
+    width: calc(100% - 24px);
+    min-height: calc(100% - 24px);
+    margin: 12px;
+  }
+}
+
+/* ============ Weather Widget Responsive ============ */
+.weather-current {
+  flex-wrap: wrap;
+}
+
+.weather-icon {
+  font-size: clamp(1.5rem, 8cqw, 2.5rem);
+}
+
+.weather-temp {
+  font-size: clamp(1.2rem, 6cqw, 2rem);
+}
+
+.weather-location {
+  font-size: clamp(0.75rem, 4cqw, 0.9rem);
+}
+
+.weather-condition {
+  font-size: clamp(0.65rem, 3.5cqw, 0.8rem);
+}
+
+.weather-details {
+  font-size: clamp(0.7rem, 3.5cqw, 0.85rem);
+}
+
+.weather-forecast {
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.forecast-day {
+  flex: 1 1 auto;
+  min-width: 45px;
+  padding: 6px 3px;
+}
+
+.forecast-name {
+  font-size: clamp(0.55rem, 3cqw, 0.7rem);
+}
+
+.forecast-icon {
+  font-size: clamp(0.9rem, 5cqw, 1.2rem);
+}
+
+.forecast-temps {
+  font-size: clamp(0.6rem, 3cqw, 0.75rem);
+}
+
+/* Container query support for widgets */
+.widget {
+  container-type: inline-size;
 }

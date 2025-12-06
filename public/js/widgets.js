@@ -64,7 +64,7 @@ function closeCommandPalette() {
 }
 
 function renderCommandPalette(filter = '') {
-  const filtered = Object.entries(widgetTypes).filter(([key, type]) => 
+  const filtered = Object.entries(widgetTypes).filter(([key, type]) =>
     type.name.toLowerCase().includes(filter.toLowerCase()) ||
     type.description.toLowerCase().includes(filter.toLowerCase())
   );
@@ -239,7 +239,7 @@ function renderWidgets() {
   }
 
   widgetGrid.innerHTML = widgets.map(widget => createWidgetHTML(widget)).join('');
-  
+
   widgets.forEach(widget => {
     setupWidgetInteractions(widget);
     loadWidgetContent(widget);
@@ -294,7 +294,7 @@ function setupWidgetInteractions(widget) {
     dragStartY = e.clientY;
     widgetStartX = widget.x * GRID_SIZE;
     widgetStartY = widget.y * GRID_SIZE;
-    
+
     const maxZ = Math.max(...widgets.map(w => w.z_index || 0)) + 1;
     el.style.zIndex = maxZ;
     widget.z_index = maxZ;
@@ -304,20 +304,31 @@ function setupWidgetInteractions(widget) {
     if (!isDragging) return;
     const dx = e.clientX - dragStartX;
     const dy = e.clientY - dragStartY;
-    el.style.left = Math.max(0, widgetStartX + dx) + 'px';
-    el.style.top = Math.max(0, widgetStartY + dy) + 'px';
+    const gridRect = widgetGrid.getBoundingClientRect();
+    const widgetWidth = widget.width * GRID_SIZE;
+    const maxLeft = gridRect.width - widgetWidth;
+    const newLeft = Math.max(0, Math.min(maxLeft, widgetStartX + dx));
+    const newTop = Math.max(0, widgetStartY + dy);
+    el.style.left = newLeft + 'px';
+    el.style.top = newTop + 'px';
   });
 
   document.addEventListener('mouseup', () => {
     if (!isDragging) return;
     isDragging = false;
     el.classList.remove('dragging');
-    
-    const newX = Math.round(parseInt(el.style.left) / GRID_SIZE);
+
+    const gridRect = widgetGrid.getBoundingClientRect();
+    const widgetWidth = widget.width * GRID_SIZE;
+    const maxLeft = gridRect.width - widgetWidth;
+    const currentLeft = parseInt(el.style.left);
+    const constrainedLeft = Math.max(0, Math.min(maxLeft, currentLeft));
+
+    const newX = Math.round(constrainedLeft / GRID_SIZE);
     const newY = Math.round(parseInt(el.style.top) / GRID_SIZE);
     el.style.left = newX * GRID_SIZE + 'px';
     el.style.top = newY * GRID_SIZE + 'px';
-    
+
     if (newX !== widget.x || newY !== widget.y) {
       widget.x = newX;
       widget.y = newY;
@@ -343,7 +354,10 @@ function setupWidgetInteractions(widget) {
     if (!isResizing) return;
     const dx = e.clientX - resizeStartX;
     const dy = e.clientY - resizeStartY;
-    const newWidth = Math.max(GRID_SIZE * 5, widgetStartWidth + dx);
+    const gridRect = widgetGrid.getBoundingClientRect();
+    const widgetLeft = widget.x * GRID_SIZE;
+    const maxWidth = gridRect.width - widgetLeft;
+    const newWidth = Math.max(GRID_SIZE * 5, Math.min(maxWidth, widgetStartWidth + dx));
     const newHeight = Math.max(GRID_SIZE * 4, widgetStartHeight + dy);
     el.style.width = newWidth + 'px';
     el.style.height = newHeight + 'px';
@@ -353,12 +367,18 @@ function setupWidgetInteractions(widget) {
     if (!isResizing) return;
     isResizing = false;
     el.classList.remove('resizing');
-    
-    const newWidth = Math.round(parseInt(el.style.width) / GRID_SIZE);
+
+    const gridRect = widgetGrid.getBoundingClientRect();
+    const widgetLeft = widget.x * GRID_SIZE;
+    const maxWidth = gridRect.width - widgetLeft;
+    const currentWidth = parseInt(el.style.width);
+    const constrainedWidth = Math.max(GRID_SIZE * 5, Math.min(maxWidth, currentWidth));
+
+    const newWidth = Math.round(constrainedWidth / GRID_SIZE);
     const newHeight = Math.round(parseInt(el.style.height) / GRID_SIZE);
     el.style.width = newWidth * GRID_SIZE + 'px';
     el.style.height = newHeight * GRID_SIZE + 'px';
-    
+
     if (newWidth !== widget.width || newHeight !== widget.height) {
       widget.width = newWidth;
       widget.height = newHeight;
@@ -386,7 +406,7 @@ function toggleWidgetSettings(widget, el) {
   const popover = document.createElement('div');
   popover.className = 'widget-settings-popover open';
   popover.innerHTML = getWidgetSettingsHTML(widget);
-  
+
   document.body.appendChild(popover);
   activeSettingsPopover = popover;
 
@@ -394,22 +414,22 @@ function toggleWidgetSettings(widget, el) {
   const settingsBtn = el.querySelector('.widget-action-btn.settings');
   const btnRect = settingsBtn.getBoundingClientRect();
   const popoverRect = popover.getBoundingClientRect();
-  
+
   let top = btnRect.bottom + 8;
   let left = btnRect.right - popoverRect.width;
-  
+
   if (top + popoverRect.height > window.innerHeight - 20) {
     top = btnRect.top - popoverRect.height - 8;
   }
-  
+
   if (left < 20) {
     left = 20;
   }
-  
+
   if (left + popoverRect.width > window.innerWidth - 20) {
     left = window.innerWidth - popoverRect.width - 20;
   }
-  
+
   popover.style.top = top + 'px';
   popover.style.left = left + 'px';
 
@@ -496,7 +516,7 @@ async function loadWidgetContent(widget) {
   contentEl.innerHTML = '<div class="widget-loading">Loading...</div>';
 
   const data = await fetchWidgetData(widget.id);
-  
+
   if (data.error) {
     contentEl.innerHTML = `<div class="widget-error">${icons.alert}<span>${data.error}</span></div>`;
     return;
@@ -597,7 +617,7 @@ function renderHackerNewsContent(stories) {
         <div class="hn-item">
           <div class="hn-rank">${i + 1}.</div>
           <div class="hn-content">
-            <a href="${story.url || `https://news.ycombinator.com/item?id=${story.id}`}" target="_blank" rel="noopener" class="hn-title">${escapeHtml(story.title)}</a>
+            <a href="https://news.ycombinator.com/item?id=${story.id}" target="_blank" rel="noopener" class="hn-title">${escapeHtml(story.title)}</a>
             <div class="hn-meta">
               <span>⬆ ${story.score || 0}</span>
               <a href="https://news.ycombinator.com/item?id=${story.id}" target="_blank" rel="noopener">💬 ${story.descendants || 0}</a>
