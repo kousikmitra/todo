@@ -121,14 +121,25 @@ document.addEventListener('keydown', (e) => {
     e.preventDefault();
     toggleDashboard();
   }
-  // Cmd+K - Command palette (only when dashboard visible and app is visible)
-  if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k' && isVisible && dashboardVisible) {
+  // Cmd+K - Open add todo modal or command palette depending on context
+  if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k' && isVisible) {
     e.preventDefault();
-    toggleCommandPalette();
+    if (dashboardVisible) {
+      toggleCommandPalette();
+    } else if (typeof openTodoModal === 'function') {
+      // Close modal if open, otherwise open it
+      if (typeof todoModalOpen !== 'undefined' && todoModalOpen) {
+        closeTodoModal();
+      } else {
+        openTodoModal();
+      }
+    }
   }
-  // Escape - Close command palette
-  if (e.key === 'Escape' && commandPaletteVisible) {
-    closeCommandPalette();
+  // Escape - Close command palette or todo modal
+  if (e.key === 'Escape') {
+    if (commandPaletteVisible) {
+      closeCommandPalette();
+    }
   }
 });
 

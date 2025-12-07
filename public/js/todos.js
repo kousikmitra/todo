@@ -1,10 +1,16 @@
 // ============ Todo Module ============
 const API = '/api/todos';
-const addForm = document.getElementById('addForm');
-const todoInput = document.getElementById('todoInput');
-const dueDateInput = document.getElementById('dueDateInput');
-const priorityInput = document.getElementById('priorityInput');
-const linkInput = document.getElementById('linkInput');
+
+// Modal elements
+const todoModalOverlay = document.getElementById('todoModalOverlay');
+const todoModal = document.getElementById('todoModal');
+const todoModalForm = document.getElementById('todoModalForm');
+const modalTodoInput = document.getElementById('modalTodoInput');
+const modalDueDateInput = document.getElementById('modalDueDateInput');
+const modalPriorityInput = document.getElementById('modalPriorityInput');
+const modalLinkInput = document.getElementById('modalLinkInput');
+
+let todoModalOpen = false;
 
 const columns = {
   todo: document.getElementById('columnTodo'),
@@ -686,24 +692,76 @@ async function loadTodos() {
   renderTodos(todos);
 }
 
-// Form submission
-addForm.addEventListener('submit', (e) => {
+// ============ Todo Modal Functions ============
+function openTodoModal() {
+  todoModalOpen = true;
+  todoModalOverlay.classList.add('open');
+  document.body.style.overflow = 'hidden';
+  
+  // Reset form
+  modalTodoInput.value = '';
+  modalDueDateInput.value = '';
+  modalPriorityInput.value = '';
+  modalLinkInput.value = '';
+  
+  // Focus title input after animation
+  setTimeout(() => modalTodoInput.focus(), 50);
+}
+
+function closeTodoModal() {
+  todoModalOpen = false;
+  todoModalOverlay.classList.remove('open');
+  document.body.style.overflow = '';
+}
+
+function submitTodoModal() {
+  const title = modalTodoInput.value.trim();
+  if (!title) {
+    modalTodoInput.focus();
+    return;
+  }
+  
+  const link = modalLinkInput.value.trim();
+  addTodo(
+    title, 
+    modalDueDateInput.value, 
+    modalPriorityInput.value, 
+    isValidUrl(link) ? link : null
+  );
+  
+  closeTodoModal();
+}
+
+// Modal form submission
+todoModalForm.addEventListener('submit', (e) => {
   e.preventDefault();
-  const title = todoInput.value.trim();
-  if (title) {
-    const link = linkInput.value.trim();
-    addTodo(title, dueDateInput.value, priorityInput.value, isValidUrl(link) ? link : null);
-    todoInput.value = '';
-    dueDateInput.value = '';
-    priorityInput.value = '';
-    linkInput.value = '';
-    updateDatePickerDisplay(document.getElementById('mainDatePicker'), '');
-    updatePriorityPickerDisplay(document.getElementById('mainPriorityPicker'), '');
-    todoInput.focus();
+  submitTodoModal();
+});
+
+// Close modal when clicking overlay
+todoModalOverlay.addEventListener('click', (e) => {
+  if (e.target === todoModalOverlay) {
+    closeTodoModal();
   }
 });
 
-// Initialize main pickers
-initDatePicker('mainDatePicker', 'dueDateInput');
-initPriorityPicker('mainPriorityPicker', 'priorityInput');
+// Modal keyboard navigation
+todoModalOverlay.addEventListener('keydown', (e) => {
+  if (!todoModalOpen) return;
+  
+  if (e.key === 'Escape') {
+    e.preventDefault();
+    closeTodoModal();
+  }
+  
+  // Enter on any field submits (except if in textarea-like inputs)
+  if (e.key === 'Enter' && !e.shiftKey) {
+    const activeEl = document.activeElement;
+    // Allow Enter to work normally for select dropdowns
+    if (activeEl.tagName !== 'SELECT') {
+      e.preventDefault();
+      submitTodoModal();
+    }
+  }
+});
 
