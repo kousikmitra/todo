@@ -20,9 +20,11 @@ export async function handleTodosRoutes(req, pathname, method) {
     const dueDate = body.due_date || null;
     const priority = body.priority || null;
     const status = body.status || 'todo';
+    // Store links as JSON array for future multi-link support
+    const links = body.link ? JSON.stringify([body.link]) : null;
     const result = db.run(
-      "INSERT INTO todos (title, due_date, priority, status) VALUES (?, ?, ?, ?)",
-      [body.title, dueDate, priority, status]
+      "INSERT INTO todos (title, due_date, priority, status, links) VALUES (?, ?, ?, ?, ?)",
+      [body.title, dueDate, priority, status, links]
     );
     const todo = db.query("SELECT * FROM todos WHERE id = ?").get(result.lastInsertRowid);
     return jsonResponse(todo, 201);
@@ -44,6 +46,12 @@ export async function handleTodosRoutes(req, pathname, method) {
     const completed = newStatus === 'done' ? 1 : 0;
     const dueDate = body?.due_date !== undefined ? body.due_date : existing.due_date;
     const priority = body?.priority !== undefined ? body.priority : existing.priority;
+    
+    // Handle link update - store as JSON array for future multi-link support
+    let links = existing.links;
+    if (body?.link !== undefined) {
+      links = body.link ? JSON.stringify([body.link]) : null;
+    }
 
     // Set completed_at when moving to done, clear it when moving away from done
     let completedAt = existing.completed_at;
@@ -54,8 +62,8 @@ export async function handleTodosRoutes(req, pathname, method) {
     }
 
     db.run(
-      "UPDATE todos SET title = ?, completed = ?, status = ?, due_date = ?, priority = ?, completed_at = ? WHERE id = ?",
-      [title, completed, newStatus, dueDate, priority, completedAt, id]
+      "UPDATE todos SET title = ?, completed = ?, status = ?, due_date = ?, priority = ?, completed_at = ?, links = ? WHERE id = ?",
+      [title, completed, newStatus, dueDate, priority, completedAt, links, id]
     );
     const updated = db.query("SELECT * FROM todos WHERE id = ?").get(id);
     return jsonResponse(updated);

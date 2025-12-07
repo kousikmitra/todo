@@ -4,6 +4,7 @@ const addForm = document.getElementById('addForm');
 const todoInput = document.getElementById('todoInput');
 const dueDateInput = document.getElementById('dueDateInput');
 const priorityInput = document.getElementById('priorityInput');
+const linkInput = document.getElementById('linkInput');
 
 const columns = {
   todo: document.getElementById('columnTodo'),
@@ -20,6 +21,7 @@ const counts = {
 let draggedCard = null;
 let activeDatePicker = null;
 let activePriorityPicker = null;
+let activeLinkInput = null;
 
 // ============ Date Picker Functions ============
 function initDatePicker(wrapperId, inputId, onChange) {
@@ -326,10 +328,94 @@ function closePriorityPicker(wrapper) {
   if (activePriorityPicker === wrapper) activePriorityPicker = null;
 }
 
+// ============ Link Attachment Functions ============
+function parseLinks(linksJson) {
+  if (!linksJson) return [];
+  try {
+    return JSON.parse(linksJson);
+  } catch {
+    return [];
+  }
+}
+
+function getFirstLink(linksJson) {
+  const links = parseLinks(linksJson);
+  return links.length > 0 ? links[0] : null;
+}
+
+function toggleLinkInput(todoId) {
+  const wrapper = document.getElementById(`linkWrapper_${todoId}`);
+  const inputContainer = wrapper.querySelector('.link-input-container');
+  const input = wrapper.querySelector('.link-input');
+  
+  if (activeDatePicker) closeDatePicker(activeDatePicker);
+  if (activePriorityPicker) closePriorityPicker(activePriorityPicker);
+  if (activeLinkInput && activeLinkInput !== wrapper) closeLinkInput(activeLinkInput);
+  
+  if (inputContainer.classList.contains('open')) {
+    closeLinkInput(wrapper);
+  } else {
+    inputContainer.classList.add('open');
+    wrapper.querySelector('.link-trigger').classList.add('active');
+    activeLinkInput = wrapper;
+    input.focus();
+    input.select();
+  }
+}
+
+function closeLinkInput(wrapper) {
+  const inputContainer = wrapper.querySelector('.link-input-container');
+  const trigger = wrapper.querySelector('.link-trigger');
+  inputContainer.classList.remove('open');
+  trigger.classList.remove('active');
+  if (activeLinkInput === wrapper) activeLinkInput = null;
+}
+
+function saveLinkFromInput(todoId) {
+  const wrapper = document.getElementById(`linkWrapper_${todoId}`);
+  const input = wrapper.querySelector('.link-input');
+  const url = input.value.trim();
+  
+  if (url && !isValidUrl(url)) {
+    input.classList.add('error');
+    return;
+  }
+  
+  input.classList.remove('error');
+  updateTodo(todoId, 'link', url || null);
+  closeLinkInput(wrapper);
+}
+
+function clearLink(todoId, e) {
+  if (e) e.stopPropagation();
+  updateTodo(todoId, 'link', null);
+}
+
+function isValidUrl(string) {
+  try {
+    new URL(string);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function handleLinkKeydown(e, todoId) {
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    saveLinkFromInput(todoId);
+  }
+  if (e.key === 'Escape') {
+    const wrapper = document.getElementById(`linkWrapper_${todoId}`);
+    closeLinkInput(wrapper);
+  }
+}
+
 // Close pickers when clicking outside
 document.addEventListener('click', (e) => {
   if (activeDatePicker && !activeDatePicker.contains(e.target)) closeDatePicker(activeDatePicker);
   if (activePriorityPicker && !activePriorityPicker.contains(e.target)) closePriorityPicker(activePriorityPicker);
+  if (activeLinkInput && !activeLinkInput.contains(e.target)) closeLinkInput(activeLinkInput);
 });
 
 // ============ Todo CRUD Functions ============
@@ -373,10 +459,25 @@ function createCard(todo, isDone = false) {
   const cardOverdueClass = isOverdue(todo.due_date) && todo.status !== 'done' ? 'overdue' : '';
   const datePickerId = `datePicker_${todo.id}`;
   const priorityPickerId = `priorityPicker_${todo.id}`;
+  const linkWrapperId = `linkWrapper_${todo.id}`;
+  
+  const currentLink = getFirstLink(todo.links);
+  const hasLink = !!currentLink;
+
+  const linkDisplay = hasLink ? `
+    <div class="card-link">
+      <a href="${escapeHtml(currentLink)}" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()" title="${escapeHtml(currentLink)}">
+        ${icons.externalLink}
+        <span class="link-text">${escapeHtml(new URL(currentLink).hostname)}</span>
+      </a>
+      <button class="link-remove" onclick="clearLink(${todo.id}, event)" title="Remove link">${icons.close}</button>
+    </div>
+  ` : '';
 
   return `
     <div class="card ${cardOverdueClass}" draggable="true" data-id="${todo.id}">
       <div class="card-title" onclick="startEditTitle(${todo.id}, this)">${escapeHtml(todo.title)}</div>
+      ${linkDisplay}
       ${completedDateDisplay}
       <div class="card-actions">
         <div class="date-picker-wrapper card-date-picker" id="${datePickerId}">
@@ -396,6 +497,15 @@ function createCard(todo, isDone = false) {
           <div class="priority-picker-dropdown"></div>
         </div>
         <input type="hidden" id="priorityInput_${todo.id}" value="${todo.priority || ''}">
+        <div class="link-wrapper" id="${linkWrapperId}">
+          <button class="link-trigger ${hasLink ? 'has-link' : ''}" onclick="toggleLinkInput(${todo.id})" title="${hasLink ? 'Edit link' : 'Add link'}">
+            ${icons.paperclip}
+          </button>
+          <div class="link-input-container">
+            <input type="url" class="link-input" placeholder="Paste link..." value="${hasLink ? escapeHtml(currentLink) : ''}" onkeydown="handleLinkKeydown(event, ${todo.id})">
+            <button class="link-save" onclick="saveLinkFromInput(${todo.id})" title="Save">${icons.checkSmall}</button>
+          </div>
+        </div>
         <button class="btn-delete" onclick="deleteTodo(${todo.id})" title="Delete">${icons.trash}</button>
       </div>
     </div>
@@ -484,7 +594,7 @@ function setupDragAndDrop() {
   });
 }
 
-async function addTodo(title, dueDate, priority) {
+async function addTodo(title, dueDate, priority, link) {
   await fetch(API, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -492,6 +602,7 @@ async function addTodo(title, dueDate, priority) {
       title,
       due_date: dueDate || null,
       priority: priority || null,
+      link: link || null,
       status: 'todo'
     })
   });
@@ -580,10 +691,12 @@ addForm.addEventListener('submit', (e) => {
   e.preventDefault();
   const title = todoInput.value.trim();
   if (title) {
-    addTodo(title, dueDateInput.value, priorityInput.value);
+    const link = linkInput.value.trim();
+    addTodo(title, dueDateInput.value, priorityInput.value, isValidUrl(link) ? link : null);
     todoInput.value = '';
     dueDateInput.value = '';
     priorityInput.value = '';
+    linkInput.value = '';
     updateDatePickerDisplay(document.getElementById('mainDatePicker'), '');
     updatePriorityPickerDisplay(document.getElementById('mainPriorityPicker'), '');
     todoInput.focus();
