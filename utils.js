@@ -1,4 +1,20 @@
 /**
+ * Logs a message with ISO timestamp prefix
+ */
+export function log(...args) {
+  const timestamp = new Date().toISOString();
+  console.log(`[${timestamp}]`, ...args);
+}
+
+/**
+ * Logs an error message with ISO timestamp prefix
+ */
+export function logError(...args) {
+  const timestamp = new Date().toISOString();
+  console.error(`[${timestamp}] ERROR:`, ...args);
+}
+
+/**
  * Parses JSON body from request
  */
 export async function parseBody(req) {

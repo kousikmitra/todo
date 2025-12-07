@@ -1,7 +1,7 @@
 import config from "./config.js";
 import { dirname, join } from "path";
 import { fileURLToPath } from "url";
-import { jsonResponse } from "./utils.js";
+import { jsonResponse, log } from "./utils.js";
 import { handleTodosRoutes } from "./routes/todos.js";
 import { handleWidgetsRoutes } from "./routes/widgets.js";
 
@@ -54,10 +54,10 @@ async function handler(req) {
   return serveStatic(pathname);
 }
 
-console.log(`Todo app starting in ${config.isProduction ? 'PRODUCTION' : 'DEVELOPMENT'} mode...`);
-console.log(`  Config: ${config.configFile}`);
-console.log(`  Database: ${config.dbPath}`);
-console.log(`  Server: http://${config.host}:${config.port}`);
+log(`Todo app starting in ${config.isProduction ? 'PRODUCTION' : 'DEVELOPMENT'} mode...`);
+log(`Config: ${config.configFile}`);
+log(`Database: ${config.dbPath}`);
+log(`Server: http://${config.host}:${config.port}`);
 
 export default {
   port: config.port,

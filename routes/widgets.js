@@ -1,5 +1,5 @@
 import db from "../db.js";
-import { parseBody, jsonResponse } from "../utils.js";
+import { parseBody, jsonResponse, logError } from "../utils.js";
 
 const DEFAULT_WEATHER_REFRESH_SECONDS = 3600; // 1 hour
 
@@ -101,6 +101,7 @@ async function fetchWeatherData(widgetId, settings, forceRefresh = false) {
 
     return jsonResponse(data);
   } catch (error) {
+    logError('Weather fetch failed:', error.message);
     // Return cached data if available on error
     if (settings.cached_data) {
       try {
@@ -135,6 +136,7 @@ async function fetchHackerNewsData(settings) {
 
     return jsonResponse(stories.filter(s => s !== null));
   } catch (error) {
+    logError('HackerNews fetch failed:', error.message);
     return jsonResponse({ error: "HackerNews service unavailable" }, 503);
   }
 }
