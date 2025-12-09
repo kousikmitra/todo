@@ -4,6 +4,7 @@ import { parseBody, jsonResponse, logError } from "../utils.js";
 const DEFAULT_WEATHER_REFRESH_SECONDS = 3600; // 1 hour
 const DEFAULT_HACKERNEWS_REFRESH_SECONDS = 900; // 15 minutes
 const DEFAULT_DEVBLOGS_REFRESH_SECONDS = 1800; // 30 minutes
+const DEFAULT_GITHUB_REFRESH_SECONDS = 3600; // 1 hour
 const DEVBLOGS_TOPICS_CACHE_SECONDS = 86400; // 24 hours
 const DEVBLOGS_SOURCES_CACHE_SECONDS = 86400; // 24 hours
 
@@ -351,6 +352,142 @@ function formatReadTime(seconds) {
 }
 
 
+// Common paths where gh CLI might be installed
+const GH_PATHS = [
+  '/opt/homebrew/bin/gh',
+  '/usr/local/bin/gh',
+  '/usr/bin/gh',
+  'gh'  // fallback to PATH
+];
+
+let ghPath = null;
+
+/**
+ * Finds the gh CLI executable path
+ */
+async function findGhPath() {
+  if (ghPath) return ghPath;
+  
+  for (const path of GH_PATHS) {
+    try {
+      const file = Bun.file(path);
+      if (await file.exists()) {
+        ghPath = path;
+        return ghPath;
+      }
+    } catch {
+      // Try next path
+    }
+  }
+  
+  // Fallback to 'gh' and hope it's in PATH
+  ghPath = 'gh';
+  return ghPath;
+}
+
+/**
+ * Executes a gh CLI command and returns parsed JSON output
+ */
+async function execGhCommand(args, parseJson = true) {
+  const gh = await findGhPath();
+  const proc = Bun.spawn([gh, ...args], {
+    stdout: 'pipe',
+    stderr: 'pipe'
+  });
+
+  const output = await new Response(proc.stdout).text();
+  const error = await new Response(proc.stderr).text();
+  const exitCode = await proc.exited;
+
+  if (exitCode !== 0) {
+    throw new Error(error || `gh command failed with exit code ${exitCode}`);
+  }
+
+  if (!parseJson) {
+    return output.trim();
+  }
+
+  return JSON.parse(output);
+}
+
+/**
+ * Fetches GitHub PR data using gh CLI with caching
+ */
+async function fetchGitHubData(widgetId, settings, forceRefresh = false) {
+  const refreshPeriod = parseInt(settings.refresh_period) || DEFAULT_GITHUB_REFRESH_SECONDS;
+  const lastFetched = parseInt(settings.last_fetched) || 0;
+  const now = Math.floor(Date.now() / 1000);
+
+  // Check cache validity
+  if (!forceRefresh && settings.cached_data && (now - lastFetched) < refreshPeriod) {
+    try {
+      return jsonResponse(JSON.parse(settings.cached_data));
+    } catch {
+      // Invalid cached data, continue to fetch
+    }
+  }
+
+  try {
+    // Get current user (returns plain string, not JSON)
+    const username = await execGhCommand(['api', 'user', '--jq', '.login'], false);
+
+    // Date 30 days ago
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    const dateStr = thirtyDaysAgo.toISOString().split('T')[0];
+
+    // Fetch open PRs created by me
+    const myOpenPRs = await execGhCommand([
+      'search', 'prs',
+      '--author', '@me',
+      '--state', 'open',
+      '--json', 'number,title,repository,url,createdAt,isDraft',
+      '--limit', '100'
+    ]);
+
+    // Fetch PRs awaiting my review
+    const reviewRequests = await execGhCommand([
+      'search', 'prs',
+      '--review-requested', '@me',
+      '--state', 'open',
+      '--json', 'number,title,repository,url,createdAt,author',
+      '--limit', '100'
+    ]);
+
+    // Fetch PRs by me merged in last 30 days
+    const mergedPRs = await execGhCommand([
+      'search', 'prs',
+      '--author', '@me',
+      '--merged', `>=${dateStr}`,
+      '--json', 'number,title,repository,url,createdAt,state',
+      '--limit', '100'
+    ]);
+
+    const data = {
+      username,
+      myOpenPRs: Array.isArray(myOpenPRs) ? myOpenPRs : [],
+      reviewRequests: Array.isArray(reviewRequests) ? reviewRequests : [],
+      mergedPRs: Array.isArray(mergedPRs) ? mergedPRs : [],
+      fetchedAt: new Date().toISOString()
+    };
+
+    // Cache the response
+    saveSetting(widgetId, 'cached_data', JSON.stringify(data));
+    saveSetting(widgetId, 'last_fetched', now);
+
+    return jsonResponse(data);
+  } catch (error) {
+    logError('GitHub fetch failed:', error.message);
+    // Return cached data if available on error
+    if (settings.cached_data) {
+      try {
+        return jsonResponse(JSON.parse(settings.cached_data));
+      } catch { }
+    }
+    return jsonResponse({ error: error.message || "GitHub CLI unavailable. Make sure 'gh' is installed and authenticated." }, 503);
+  }
+}
+
 /**
  * Helper function to get widget settings as an object
  */
@@ -501,6 +638,11 @@ export async function handleWidgetsRoutes(req, pathname, method) {
         // Count, topics, or sources changed - clear cache
         db.run("DELETE FROM widget_settings WHERE widget_id = ? AND key IN ('cached_data', 'last_fetched')", [id]);
       }
+    } else if (existing.type === 'github') {
+      if (body.refresh_period !== undefined) {
+        // Refresh period changed - clear cache
+        db.run("DELETE FROM widget_settings WHERE widget_id = ? AND key IN ('cached_data', 'last_fetched')", [id]);
+      }
     }
 
     for (const [key, value] of Object.entries(body || {})) {
@@ -538,6 +680,8 @@ export async function handleWidgetsRoutes(req, pathname, method) {
       return await fetchHackerNewsData(id, settingsObj, forceRefresh);
     } else if (widget.type === 'devblogs') {
       return await fetchDevBlogsData(id, settingsObj, forceRefresh);
+    } else if (widget.type === 'github') {
+      return await fetchGitHubData(id, settingsObj, forceRefresh);
     }
 
     return jsonResponse({ error: "Unknown widget type" }, 400);

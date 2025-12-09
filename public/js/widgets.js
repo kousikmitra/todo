@@ -70,6 +70,14 @@ const widgetTypes = {
     defaultWidth: 8,
     defaultHeight: 10,
     defaultSettings: { count: '10', topics: '', sources: '' }
+  },
+  github: {
+    name: 'GitHub',
+    description: 'Your PR activity and review requests',
+    icon: icons.github,
+    defaultWidth: 7,
+    defaultHeight: 6,
+    defaultSettings: {}
   }
 };
 
@@ -278,6 +286,8 @@ async function forceRefreshWidget(widget) {
     contentEl.innerHTML = renderHackerNewsContent(data);
   } else if (widget.type === 'devblogs') {
     contentEl.innerHTML = renderDevBlogsContent(data);
+  } else if (widget.type === 'github') {
+    contentEl.innerHTML = renderGitHubContent(data);
   }
 }
 
@@ -700,6 +710,26 @@ function getWidgetSettingsHTML(widget) {
         </div>
       </form>
     `;
+  } else if (widget.type === 'github') {
+    const refreshPeriod = widget.settings.refresh_period || '3600';
+    return `
+      <div class="widget-settings-header">GitHub Settings</div>
+      <form class="widget-settings-body">
+        <div class="widget-settings-field">
+          <label class="widget-settings-label">Refresh Interval</label>
+          <select name="refresh_period" class="widget-settings-select">
+            <option value="3600" ${refreshPeriod === '3600' ? 'selected' : ''}>1 hour</option>
+            <option value="10800" ${refreshPeriod === '10800' ? 'selected' : ''}>3 hours</option>
+            <option value="21600" ${refreshPeriod === '21600' ? 'selected' : ''}>6 hours</option>
+            <option value="43200" ${refreshPeriod === '43200' ? 'selected' : ''}>12 hours</option>
+          </select>
+        </div>
+        <div class="widget-settings-actions">
+          <button type="button" class="widget-settings-btn secondary">Cancel</button>
+          <button type="submit" class="widget-settings-btn primary">Save</button>
+        </div>
+      </form>
+    `;
   }
   return '<div class="widget-settings-body">No settings available</div>';
 }
@@ -723,6 +753,8 @@ async function loadWidgetContent(widget) {
     contentEl.innerHTML = renderHackerNewsContent(data);
   } else if (widget.type === 'devblogs') {
     contentEl.innerHTML = renderDevBlogsContent(data);
+  } else if (widget.type === 'github') {
+    contentEl.innerHTML = renderGitHubContent(data);
   }
 }
 
@@ -853,6 +885,53 @@ function renderDevBlogsContent(posts) {
         </div>
       `).join('')}
     </div>
+  `;
+}
+
+// ============ GitHub Widget Content ============
+function renderGitHubContent(data) {
+  if (data.error) {
+    return `<div class="widget-error">${icons.alert}<span>${escapeHtml(data.error)}</span></div>`;
+  }
+
+  const openPRsCount = data.myOpenPRs?.length || 0;
+  const reviewRequestsCount = data.reviewRequests?.length || 0;
+  const mergedPRsCount = data.mergedPRs?.length || 0;
+  const username = data.username || 'Unknown';
+
+  // Format last updated time
+  let lastUpdated = '';
+  if (data.fetchedAt) {
+    const fetchedDate = new Date(data.fetchedAt);
+    lastUpdated = fetchedDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+  }
+
+  return `
+    <div class="github-user">
+      <div class="github-user-icon">${icons.github}</div>
+      <span class="github-user-name">@${escapeHtml(username)}</span>
+      <a href="https://github.com/${escapeHtml(username)}" target="_blank" rel="noopener" class="github-user-link">
+        Profile ${icons.externalLink}
+      </a>
+    </div>
+    <div class="github-stats">
+      <div class="github-stat-card">
+        <div class="github-stat-icon review-requests">${icons.eye}</div>
+        <div class="github-stat-value">${reviewRequestsCount}</div>
+        <div class="github-stat-label">Review Pending</div>
+      </div>
+      <div class="github-stat-card">
+        <div class="github-stat-icon open-prs">${icons.gitPullRequest}</div>
+        <div class="github-stat-value">${openPRsCount}</div>
+        <div class="github-stat-label">Open PRs</div>
+      </div>
+      <div class="github-stat-card">
+        <div class="github-stat-icon recent-prs">${icons.gitMerge}</div>
+        <div class="github-stat-value">${mergedPRsCount}</div>
+        <div class="github-stat-label">Merged (30d)</div>
+      </div>
+    </div>
+    ${lastUpdated ? `<div class="github-last-updated">Updated at ${lastUpdated}</div>` : ''}
   `;
 }
 
