@@ -31,7 +31,8 @@ const CONFIG_FILE = join(CONFIG_DIR, "config.json");
 const DEFAULT_CONFIG = {
   port: 5555,
   host: "localhost",
-  hidden: false
+  hidden: false,
+  defaultPage: "todos" // 'todos' or 'dashboard'
 };
 
 const DEV_PORT = 3000;
@@ -70,6 +71,7 @@ export default {
   port: activePort,
   host: config.host,
   hidden: config.hidden,
+  defaultPage: config.defaultPage,
   isProduction: IS_PRODUCTION,
   configDir: CONFIG_DIR,
   dataDir: IS_PRODUCTION ? DATA_DIR : __dirname,

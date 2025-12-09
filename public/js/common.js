@@ -98,12 +98,21 @@ function toggleVisibility() {
 }
 
 /**
- * Load config and apply default visibility
+ * Load config and apply default visibility and page
  */
 async function loadConfig() {
   try {
     const res = await fetch('/api/config');
     const config = await res.json();
+    
+    // Set default page before visibility
+    if (config.defaultPage === 'dashboard') {
+      dashboardVisible = true;
+      appEl.classList.add('hidden');
+      dashboardEl.classList.add('visible');
+      if (typeof loadWidgets === 'function') loadWidgets();
+    }
+    
     setVisibility(!config.hidden);
   } catch {
     setVisibility(true);

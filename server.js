@@ -34,7 +34,8 @@ async function handler(req) {
   // GET /api/config - get client config
   if (method === "GET" && pathname === "/api/config") {
     return jsonResponse({
-      hidden: config.hidden
+      hidden: config.hidden,
+      defaultPage: config.defaultPage
     });
   }
 
