@@ -45,8 +45,8 @@ async function handler(req) {
     if (response) return response;
   }
 
-  // Route to widgets handler
-  if (pathname.startsWith("/api/widgets")) {
+  // Route to widgets handler (includes devblogs API)
+  if (pathname.startsWith("/api/widgets") || pathname.startsWith("/api/devblogs")) {
     const response = await handleWidgetsRoutes(req, pathname, method);
     if (response) return response;
   }

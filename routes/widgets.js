@@ -2,6 +2,75 @@ import db from "../db.js";
 import { parseBody, jsonResponse, logError } from "../utils.js";
 
 const DEFAULT_WEATHER_REFRESH_SECONDS = 3600; // 1 hour
+const DEFAULT_HACKERNEWS_REFRESH_SECONDS = 900; // 15 minutes
+const DEFAULT_DEVBLOGS_REFRESH_SECONDS = 1800; // 30 minutes
+const DEVBLOGS_TOPICS_CACHE_SECONDS = 86400; // 24 hours
+const DEVBLOGS_SOURCES_CACHE_SECONDS = 86400; // 24 hours
+
+let cachedTopics = null;
+let topicsCacheTime = 0;
+let cachedSources = null;
+let sourcesCacheTime = 0;
+
+/**
+ * Fetches available topics from DevBlogs API with caching
+ */
+async function fetchDevBlogsTopics() {
+  const now = Math.floor(Date.now() / 1000);
+  
+  // Return cached topics if still valid
+  if (cachedTopics && (now - topicsCacheTime) < DEVBLOGS_TOPICS_CACHE_SECONDS) {
+    return cachedTopics;
+  }
+
+  try {
+    const response = await fetch('https://devblogs.sh/api/topics', {
+      headers: { 'Accept': 'application/json' }
+    });
+
+    if (!response.ok) {
+      return cachedTopics || [];
+    }
+
+    const data = await response.json();
+    cachedTopics = data.topics || [];
+    topicsCacheTime = now;
+    return cachedTopics;
+  } catch (error) {
+    logError('DevBlogs topics fetch failed:', error.message);
+    return cachedTopics || [];
+  }
+}
+
+/**
+ * Fetches available sources from DevBlogs API with caching
+ */
+async function fetchDevBlogsSources() {
+  const now = Math.floor(Date.now() / 1000);
+  
+  // Return cached sources if still valid
+  if (cachedSources && (now - sourcesCacheTime) < DEVBLOGS_SOURCES_CACHE_SECONDS) {
+    return cachedSources;
+  }
+
+  try {
+    const response = await fetch('https://devblogs.sh/api/sources', {
+      headers: { 'Accept': 'application/json' }
+    });
+
+    if (!response.ok) {
+      return cachedSources || [];
+    }
+
+    const data = await response.json();
+    cachedSources = data.sources || [];
+    sourcesCacheTime = now;
+    return cachedSources;
+  } catch (error) {
+    logError('DevBlogs sources fetch failed:', error.message);
+    return cachedSources || [];
+  }
+}
 
 /**
  * Geocodes a location name to coordinates using Open-Meteo Geocoding API
@@ -113,14 +182,33 @@ async function fetchWeatherData(widgetId, settings, forceRefresh = false) {
 }
 
 /**
- * Fetches top stories from HackerNews API
+ * Fetches top stories from HackerNews API with caching
  */
-async function fetchHackerNewsData(settings) {
+async function fetchHackerNewsData(widgetId, settings, forceRefresh = false) {
+  const refreshPeriod = parseInt(settings.refresh_period) || DEFAULT_HACKERNEWS_REFRESH_SECONDS;
+  const lastFetched = parseInt(settings.last_fetched) || 0;
+  const now = Math.floor(Date.now() / 1000);
+
+  // Check if we have valid cached data
+  if (!forceRefresh && settings.cached_data && (now - lastFetched) < refreshPeriod) {
+    try {
+      return jsonResponse(JSON.parse(settings.cached_data));
+    } catch {
+      // Invalid cached data, continue to fetch
+    }
+  }
+
   try {
     const count = Math.min(Math.max(parseInt(settings.count) || 10, 5), 25);
 
     const topStoriesRes = await fetch('https://hacker-news.firebaseio.com/v0/topstories.json');
     if (!topStoriesRes.ok) {
+      // Return cached data if available, even if stale
+      if (settings.cached_data) {
+        try {
+          return jsonResponse(JSON.parse(settings.cached_data));
+        } catch { }
+      }
       return jsonResponse({ error: "Failed to fetch HackerNews stories" }, 502);
     }
 
@@ -134,205 +222,134 @@ async function fetchHackerNewsData(settings) {
       })
     );
 
-    return jsonResponse(stories.filter(s => s !== null));
+    const data = stories.filter(s => s !== null);
+
+    // Cache the response
+    saveSetting(widgetId, 'cached_data', JSON.stringify(data));
+    saveSetting(widgetId, 'last_fetched', now);
+
+    return jsonResponse(data);
   } catch (error) {
     logError('HackerNews fetch failed:', error.message);
+    // Return cached data if available on error
+    if (settings.cached_data) {
+      try {
+        return jsonResponse(JSON.parse(settings.cached_data));
+      } catch { }
+    }
     return jsonResponse({ error: "HackerNews service unavailable" }, 503);
   }
 }
 
 /**
- * Fetches top posts from DevBlogs.sh by scraping the feed page
+ * Fetches posts from DevBlogs.sh API with caching
  */
-async function fetchDevBlogsData(settings) {
+async function fetchDevBlogsData(widgetId, settings, forceRefresh = false) {
+  const refreshPeriod = parseInt(settings.refresh_period) || DEFAULT_DEVBLOGS_REFRESH_SECONDS;
+  const lastFetched = parseInt(settings.last_fetched) || 0;
+  const now = Math.floor(Date.now() / 1000);
+
+  // Check if we have valid cached data
+  if (!forceRefresh && settings.cached_data && (now - lastFetched) < refreshPeriod) {
+    try {
+      return jsonResponse(JSON.parse(settings.cached_data));
+    } catch {
+      // Invalid cached data, continue to fetch
+    }
+  }
+
   try {
     const count = Math.min(Math.max(parseInt(settings.count) || 10, 5), 20);
-    const topic = settings.topic || '';
+    const topics = settings.topics || '';
+    const sources = settings.sources || '';
 
-    let url = 'https://devblogs.sh/feed';
-    if (topic) {
-      url = `https://devblogs.sh/feed?topic=${encodeURIComponent(topic)}`;
+    // Build API URL - only add filters if not empty
+    let apiUrl = `https://devblogs.sh/api/posts?page=1&limit=${count}`;
+    if (topics && topics !== 'all') {
+      apiUrl += `&topics=${encodeURIComponent(topics)}`;
     }
-
-    const response = await fetch(url, {
+    if (sources && sources !== 'all') {
+      apiUrl += `&sources=${encodeURIComponent(sources)}`;
+    }
+    const response = await fetch(apiUrl, {
       headers: {
-        'User-Agent': 'Mozilla/5.0 (compatible; TodoWidget/1.0)',
-        'Accept': 'text/html'
+        'Accept': 'application/json'
       }
     });
 
     if (!response.ok) {
-      return jsonResponse({ error: "Failed to fetch DevBlogs feed" }, 502);
+      if (settings.cached_data) {
+        try {
+          return jsonResponse(JSON.parse(settings.cached_data));
+        } catch { }
+      }
+      return jsonResponse({ error: "Failed to fetch DevBlogs posts" }, 502);
     }
 
-    const html = await response.text();
-    const posts = parseDevBlogsHTML(html, count);
+    const apiData = await response.json();
+    const data = transformDevBlogsApiResponse(apiData.posts || []);
 
-    return jsonResponse(posts);
+    // Cache the response
+    saveSetting(widgetId, 'cached_data', JSON.stringify(data));
+    saveSetting(widgetId, 'last_fetched', now);
+
+    return jsonResponse(data);
   } catch (error) {
     logError('DevBlogs fetch failed:', error.message);
+    if (settings.cached_data) {
+      try {
+        return jsonResponse(JSON.parse(settings.cached_data));
+      } catch { }
+    }
     return jsonResponse({ error: "DevBlogs service unavailable" }, 503);
   }
 }
 
 /**
- * Parses DevBlogs HTML to extract post data
+ * Transforms DevBlogs API response to widget format
  */
-function parseDevBlogsHTML(html, count) {
-  const posts = [];
-  
-  // Collect all matches using specific patterns
-  const postLinks = [...html.matchAll(/<a[^>]*href="(\/posts\/[^"]+)"[^>]*>([^<]+)<\/a>/gi)];
-  const times = [...html.matchAll(/(\d+\s*(?:hours?|days?|weeks?|months?|minutes?)\s*ago)/gi)];
-  const readTimes = [...html.matchAll(/(\d+\s*min\s*read)/gi)];
-  const externalUrls = [...html.matchAll(/href="(https?:\/\/(?!devblogs\.sh)[^"]+)"/gi)];
-  
-  let timeIdx = 0;
-  let readTimeIdx = 0;
-  let externalIdx = 0;
-  
-  // Build posts by matching patterns
-  for (const [, link, title] of postLinks) {
-    // Skip navigation/filter links
-    if (title.length < 10 || title.includes('Filter by')) continue;
-    if (posts.length >= count) break;
-    
-    const externalUrl = externalUrls[externalIdx] ? externalUrls[externalIdx++][1] : '';
-    const source = extractSourceFromUrl(externalUrl);
-    
-    posts.push({
-      title: decodeHTMLEntities(title.trim()),
-      link: `https://devblogs.sh${link}`,
-      externalUrl,
-      source,
-      timeAgo: times[timeIdx] ? times[timeIdx++][1] : '',
-      readTime: readTimes[readTimeIdx] ? readTimes[readTimeIdx++][1] : '',
-      summary: ''
-    });
-  }
-
-  // If regex parsing failed, try alternative method
-  if (posts.length === 0) {
-    return parseDevBlogsAlternative(html, count);
-  }
-
-  return posts.slice(0, count);
+function transformDevBlogsApiResponse(posts) {
+  return posts.map(post => ({
+    title: post.title,
+    link: `https://devblogs.sh/posts/${post.slug}`,
+    externalUrl: post.url,
+    source: post.source?.name || 'DevBlogs',
+    timeAgo: formatTimeAgo(post.publishedAt),
+    readTime: formatReadTime(post.readTimeSec),
+    description: post.description,
+    topics: post.topics?.map(t => t.name) || []
+  }));
 }
 
 /**
- * Extracts a readable source name from a URL
+ * Formats a date to relative time string
  */
-function extractSourceFromUrl(url) {
-  if (!url) return 'DevBlogs';
+function formatTimeAgo(dateString) {
+  if (!dateString) return '';
   
-  try {
-    const hostname = new URL(url).hostname;
-    
-    // Map known domains to readable names
-    const domainMap = {
-      'engineering.atspotify.com': 'Spotify',
-      'www.uber.com': 'Uber',
-      'uber.com': 'Uber',
-      'medium.com': 'Medium',
-      'blog.logrocket.com': 'LogRocket',
-      'dolthub.com': 'DoltHub',
-      'arpitbhayani.me': 'Arpit Bhayani',
-      'seangoedecke.com': 'Sean Goedecke',
-      'sentry.engineering': 'Sentry',
-      'blog.janestreet.com': 'Jane Street',
-      'clickhouse.com': 'ClickHouse',
-      'www.allthingsdistributed.com': 'All Things Distributed',
-      'eli.thegreenplace.net': 'Eli Bendersky',
-      'words.filippo.io': 'Filippo Valsorda',
-      'engineering.grab.com': 'Grab',
-      'palark.com': 'Palark',
-      'estuary.dev': 'Estuary',
-      'blog.allegro.tech': 'Allegro',
-      'slack.engineering': 'Slack',
-      'www.twilio.com': 'Twilio',
-      'netflixtechblog.com': 'Netflix',
-      'engineering.fb.com': 'Meta',
-      'aws.amazon.com': 'AWS',
-      'cloud.google.com': 'Google Cloud',
-      'stripe.com': 'Stripe',
-      'github.blog': 'GitHub',
-      'dropbox.tech': 'Dropbox',
-      'blog.cloudflare.com': 'Cloudflare',
-      'discord.com': 'Discord',
-      'airbnb.io': 'Airbnb',
-      'engineering.linkedin.com': 'LinkedIn',
-      'instagram-engineering.com': 'Instagram',
-      'shopify.engineering': 'Shopify',
-    };
-    
-    if (domainMap[hostname]) {
-      return domainMap[hostname];
-    }
-    
-    // Extract from subdomain patterns like "engineering.company.com" or "blog.company.com"
-    const parts = hostname.split('.');
-    if (parts.length >= 2) {
-      // Try to get a meaningful name
-      let name = parts[parts.length - 2]; // e.g., "uber" from "www.uber.com"
-      if (parts[0] === 'engineering' || parts[0] === 'blog' || parts[0] === 'tech') {
-        name = parts[1];
-      }
-      // Capitalize first letter
-      return name.charAt(0).toUpperCase() + name.slice(1);
-    }
-    
-    return 'DevBlogs';
-  } catch {
-    return 'DevBlogs';
-  }
+  const date = new Date(dateString);
+  const now = new Date();
+  const diffMs = now - date;
+  const diffMins = Math.floor(diffMs / 60000);
+  const diffHours = Math.floor(diffMs / 3600000);
+  const diffDays = Math.floor(diffMs / 86400000);
+  
+  if (diffMins < 60) return `${diffMins} min ago`;
+  if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
+  if (diffDays < 7) return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
+  if (diffDays < 30) return `${Math.floor(diffDays / 7)} week${Math.floor(diffDays / 7) > 1 ? 's' : ''} ago`;
+  return `${Math.floor(diffDays / 30)} month${Math.floor(diffDays / 30) > 1 ? 's' : ''} ago`;
 }
 
 /**
- * Decodes HTML entities in a string
+ * Formats read time from seconds to readable string
  */
-function decodeHTMLEntities(text) {
-  const entities = {
-    '&amp;': '&',
-    '&lt;': '<',
-    '&gt;': '>',
-    '&quot;': '"',
-    '&#39;': "'",
-    '&nbsp;': ' ',
-    '&#x27;': "'",
-    '&#x2F;': '/',
-    '&mdash;': '—',
-    '&ndash;': '–',
-    '&hellip;': '…'
-  };
-  return text.replace(/&[^;]+;/g, match => entities[match] || match);
+function formatReadTime(seconds) {
+  if (!seconds) return '';
+  const mins = Math.ceil(seconds / 60);
+  return `${mins} min read`;
 }
 
-/**
- * Alternative parsing method for DevBlogs HTML
- */
-function parseDevBlogsAlternative(html, count) {
-  const posts = [];
-  
-  // Try to find article blocks by looking for h1 tags with links to /posts/
-  const articleRegex = /<h1[^>]*>[\s\S]*?<a[^>]*href="(\/posts\/[^"]+)"[^>]*>([^<]+)<\/a>/gi;
-  
-  let match;
-  while ((match = articleRegex.exec(html)) !== null && posts.length < count) {
-    const title = match[2].trim();
-    if (title.length < 10) continue;
-    
-    posts.push({
-      title: decodeHTMLEntities(title),
-      link: `https://devblogs.sh${match[1]}`,
-      externalUrl: '',
-      source: 'DevBlogs',
-      timeAgo: '',
-      readTime: ''
-    });
-  }
-
-  return posts;
-}
 
 /**
  * Helper function to get widget settings as an object
@@ -350,6 +367,18 @@ function getWidgetSettings(widgetId) {
  * Handles all widget-related API routes
  */
 export async function handleWidgetsRoutes(req, pathname, method) {
+  // GET /api/devblogs/topics - get available DevBlogs topics
+  if (method === "GET" && pathname === "/api/devblogs/topics") {
+    const topics = await fetchDevBlogsTopics();
+    return jsonResponse(topics);
+  }
+
+  // GET /api/devblogs/sources - get available DevBlogs sources
+  if (method === "GET" && pathname === "/api/devblogs/sources") {
+    const sources = await fetchDevBlogsSources();
+    return jsonResponse(sources);
+  }
+
   // GET /api/widgets - list all widgets with settings
   if (method === "GET" && pathname === "/api/widgets") {
     const widgets = db.query("SELECT * FROM widgets ORDER BY z_index ASC").all();
@@ -453,13 +482,23 @@ export async function handleWidgetsRoutes(req, pathname, method) {
       return jsonResponse({ error: "Widget not found" }, 404);
     }
 
-    // Clear cached weather data when location or units change
+    // Clear cached data when relevant settings change
     if (existing.type === 'weather') {
       if (body.location !== undefined) {
         // Location changed - clear coordinates and cache
         db.run("DELETE FROM widget_settings WHERE widget_id = ? AND key IN ('latitude', 'longitude', 'cached_data', 'last_fetched')", [id]);
       } else if (body.units !== undefined) {
         // Units changed - clear cache only (keep coordinates)
+        db.run("DELETE FROM widget_settings WHERE widget_id = ? AND key IN ('cached_data', 'last_fetched')", [id]);
+      }
+    } else if (existing.type === 'hackernews') {
+      if (body.count !== undefined) {
+        // Count changed - clear cache
+        db.run("DELETE FROM widget_settings WHERE widget_id = ? AND key IN ('cached_data', 'last_fetched')", [id]);
+      }
+    } else if (existing.type === 'devblogs') {
+      if (body.count !== undefined || body.topics !== undefined || body.sources !== undefined) {
+        // Count, topics, or sources changed - clear cache
         db.run("DELETE FROM widget_settings WHERE widget_id = ? AND key IN ('cached_data', 'last_fetched')", [id]);
       }
     }
@@ -496,9 +535,9 @@ export async function handleWidgetsRoutes(req, pathname, method) {
     if (widget.type === 'weather') {
       return await fetchWeatherData(id, settingsObj, forceRefresh);
     } else if (widget.type === 'hackernews') {
-      return await fetchHackerNewsData(settingsObj);
+      return await fetchHackerNewsData(id, settingsObj, forceRefresh);
     } else if (widget.type === 'devblogs') {
-      return await fetchDevBlogsData(settingsObj);
+      return await fetchDevBlogsData(id, settingsObj, forceRefresh);
     }
 
     return jsonResponse({ error: "Unknown widget type" }, 400);

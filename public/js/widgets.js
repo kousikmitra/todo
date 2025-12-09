@@ -8,8 +8,42 @@ const commandPaletteList = document.getElementById('commandPaletteList');
 let widgets = [];
 let selectedPaletteIndex = 0;
 let activeSettingsPopover = null;
+let devblogsTopics = null;
+let devblogsSources = null;
 
 const GRID_SIZE = 40;
+
+/**
+ * Fetches available DevBlogs topics from API
+ */
+async function fetchDevBlogsTopics() {
+  if (devblogsTopics) return devblogsTopics;
+  
+  try {
+    const res = await fetch('/api/devblogs/topics');
+    devblogsTopics = await res.json();
+    return devblogsTopics;
+  } catch (error) {
+    console.error('Failed to fetch DevBlogs topics:', error);
+    return [];
+  }
+}
+
+/**
+ * Fetches available DevBlogs sources from API
+ */
+async function fetchDevBlogsSources() {
+  if (devblogsSources) return devblogsSources;
+  
+  try {
+    const res = await fetch('/api/devblogs/sources');
+    devblogsSources = await res.json();
+    return devblogsSources;
+  } catch (error) {
+    console.error('Failed to fetch DevBlogs sources:', error);
+    return [];
+  }
+}
 
 // Widget type definitions
 const widgetTypes = {
@@ -35,7 +69,7 @@ const widgetTypes = {
     icon: icons.code,
     defaultWidth: 8,
     defaultHeight: 10,
-    defaultSettings: { count: '10', topic: '' }
+    defaultSettings: { count: '10', topics: '', sources: '' }
   }
 };
 
@@ -430,7 +464,7 @@ function setupWidgetInteractions(widget) {
   });
 }
 
-function toggleWidgetSettings(widget, el) {
+async function toggleWidgetSettings(widget, el) {
   if (activeSettingsPopover) {
     activeSettingsPopover.remove();
     activeSettingsPopover = null;
@@ -439,10 +473,16 @@ function toggleWidgetSettings(widget, el) {
 
   const popover = document.createElement('div');
   popover.className = 'widget-settings-popover open';
-  popover.innerHTML = getWidgetSettingsHTML(widget);
-
+  popover.innerHTML = '<div class="widget-settings-body"><div class="widget-loading">Loading...</div></div>';
+  
   document.body.appendChild(popover);
   activeSettingsPopover = popover;
+  
+  // Fetch topics and sources if DevBlogs widget, then render settings
+  if (widget.type === 'devblogs') {
+    await Promise.all([fetchDevBlogsTopics(), fetchDevBlogsSources()]);
+  }
+  popover.innerHTML = getWidgetSettingsHTML(widget);
 
   // Position the popover near the settings button
   const settingsBtn = el.querySelector('.widget-action-btn.settings');
@@ -466,6 +506,49 @@ function toggleWidgetSettings(widget, el) {
 
   popover.style.top = top + 'px';
   popover.style.left = left + 'px';
+
+  // Setup filter chips for DevBlogs widget (topics and sources)
+  popover.querySelectorAll('.widget-settings-chips').forEach(container => {
+    const filterType = container.dataset.filter;
+    const hiddenInput = popover.querySelector(`input[name="${filterType}"]`);
+    const countSpan = container.closest('.widget-settings-field')?.querySelector('.filter-count');
+    
+    container.querySelectorAll('.filter-chip').forEach(chip => {
+      chip.addEventListener('click', () => {
+        const value = chip.dataset.value;
+        
+        if (value === '') {
+          // "All" selected - clear all other selections
+          container.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('selected'));
+          chip.classList.add('selected');
+          hiddenInput.value = '';
+        } else {
+          // Remove "All" selection when specific item is selected
+          container.querySelector('.filter-chip[data-value=""]').classList.remove('selected');
+          chip.classList.toggle('selected');
+          
+          // Collect all selected values
+          const selected = [...container.querySelectorAll('.filter-chip.selected')]
+            .map(c => c.dataset.value)
+            .filter(v => v);
+          
+          // If nothing selected, default to "All"
+          if (selected.length === 0) {
+            container.querySelector('.filter-chip[data-value=""]').classList.add('selected');
+            hiddenInput.value = '';
+          } else {
+            hiddenInput.value = selected.join(',');
+          }
+        }
+        
+        // Update count display for sources
+        if (countSpan) {
+          const count = hiddenInput.value.split(',').filter(v => v).length;
+          countSpan.textContent = count > 0 ? `(${count} selected)` : '';
+        }
+      });
+    });
+  });
 
   // Setup form handling
   const form = popover.querySelector('form');
@@ -534,6 +617,7 @@ function getWidgetSettingsHTML(widget) {
       </form>
     `;
   } else if (widget.type === 'hackernews') {
+    const refreshPeriod = widget.settings.refresh_period || '900';
     return `
       <div class="widget-settings-header">Hacker News Settings</div>
       <form class="widget-settings-body">
@@ -543,6 +627,16 @@ function getWidgetSettingsHTML(widget) {
             ${[5, 10, 15, 20, 25].map(n => `<option value="${n}" ${widget.settings.count == n ? 'selected' : ''}>${n}</option>`).join('')}
           </select>
         </div>
+        <div class="widget-settings-field">
+          <label class="widget-settings-label">Refresh</label>
+          <select name="refresh_period" class="widget-settings-select">
+            <option value="300" ${refreshPeriod === '300' ? 'selected' : ''}>5 minutes</option>
+            <option value="600" ${refreshPeriod === '600' ? 'selected' : ''}>10 minutes</option>
+            <option value="900" ${refreshPeriod === '900' ? 'selected' : ''}>15 minutes</option>
+            <option value="1800" ${refreshPeriod === '1800' ? 'selected' : ''}>30 minutes</option>
+            <option value="3600" ${refreshPeriod === '3600' ? 'selected' : ''}>1 hour</option>
+          </select>
+        </div>
         <div class="widget-settings-actions">
           <button type="button" class="widget-settings-btn secondary">Cancel</button>
           <button type="submit" class="widget-settings-btn primary">Save</button>
@@ -550,14 +644,41 @@ function getWidgetSettingsHTML(widget) {
       </form>
     `;
   } else if (widget.type === 'devblogs') {
-    const topics = [
-      '', 'Databases', 'Data Engineering', 'Performance & Scalability', 'Software Design',
-      'Cloud Infrastructure', 'Distributed Systems', 'Machine Learning & AI', 'Backend Development',
-      'Frontend Development', 'Security', 'Testing', 'CI/CD', 'Mobile Development'
-    ];
+    const refreshPeriod = widget.settings.refresh_period || '1800';
+    const currentTopics = (widget.settings.topics || '').split(',').filter(t => t);
+    const currentSources = (widget.settings.sources || '').split(',').filter(s => s);
+    const availableTopics = devblogsTopics || [];
+    const availableSources = devblogsSources || [];
+    
+    // Group sources by type
+    const companyS = availableSources.filter(s => s.type === 'COMPANY');
+    const indieS = availableSources.filter(s => s.type === 'INDIE_BLOG');
+    const confS = availableSources.filter(s => s.type === 'CONFERENCE');
+    
     return `
       <div class="widget-settings-header">DevBlogs Settings</div>
       <form class="widget-settings-body">
+        <div class="widget-settings-field">
+          <label class="widget-settings-label">Topics</label>
+          <div class="widget-settings-chips" data-filter="topics">
+            <div class="filter-chip ${currentTopics.length === 0 ? 'selected' : ''}" data-value="">All</div>
+            ${availableTopics.map(t => `<div class="filter-chip ${currentTopics.includes(t.slug) ? 'selected' : ''}" data-value="${t.slug}">${escapeHtml(t.name)}</div>`).join('')}
+          </div>
+          <input type="hidden" name="topics" value="${widget.settings.topics || ''}">
+        </div>
+        <div class="widget-settings-field">
+          <label class="widget-settings-label">Sources <span class="filter-count">${currentSources.length > 0 ? `(${currentSources.length} selected)` : ''}</span></label>
+          <div class="widget-settings-chips sources-chips" data-filter="sources">
+            <div class="filter-chip ${currentSources.length === 0 ? 'selected' : ''}" data-value="">All</div>
+            ${companyS.length > 0 ? `<div class="chip-group-label">Companies</div>` : ''}
+            ${companyS.map(s => `<div class="filter-chip ${currentSources.includes(s.slug) ? 'selected' : ''}" data-value="${s.slug}">${escapeHtml(s.name)}</div>`).join('')}
+            ${indieS.length > 0 ? `<div class="chip-group-label">Indie Blogs</div>` : ''}
+            ${indieS.map(s => `<div class="filter-chip ${currentSources.includes(s.slug) ? 'selected' : ''}" data-value="${s.slug}">${escapeHtml(s.name)}</div>`).join('')}
+            ${confS.length > 0 ? `<div class="chip-group-label">Conferences</div>` : ''}
+            ${confS.map(s => `<div class="filter-chip ${currentSources.includes(s.slug) ? 'selected' : ''}" data-value="${s.slug}">${escapeHtml(s.name)}</div>`).join('')}
+          </div>
+          <input type="hidden" name="sources" value="${widget.settings.sources || ''}">
+        </div>
         <div class="widget-settings-field">
           <label class="widget-settings-label">Number of Posts</label>
           <select name="count" class="widget-settings-select">
@@ -565,9 +686,12 @@ function getWidgetSettingsHTML(widget) {
           </select>
         </div>
         <div class="widget-settings-field">
-          <label class="widget-settings-label">Topic Filter</label>
-          <select name="topic" class="widget-settings-select">
-            ${topics.map(t => `<option value="${t}" ${widget.settings.topic === t ? 'selected' : ''}>${t || 'All Topics'}</option>`).join('')}
+          <label class="widget-settings-label">Refresh</label>
+          <select name="refresh_period" class="widget-settings-select">
+            <option value="900" ${refreshPeriod === '900' ? 'selected' : ''}>15 minutes</option>
+            <option value="1800" ${refreshPeriod === '1800' ? 'selected' : ''}>30 minutes</option>
+            <option value="3600" ${refreshPeriod === '3600' ? 'selected' : ''}>1 hour</option>
+            <option value="7200" ${refreshPeriod === '7200' ? 'selected' : ''}>2 hours</option>
           </select>
         </div>
         <div class="widget-settings-actions">
@@ -720,6 +844,11 @@ function renderDevBlogsContent(posts) {
               ${post.timeAgo ? `<span class="devblogs-time">${escapeHtml(post.timeAgo)}</span>` : ''}
               ${post.readTime ? `<span class="devblogs-readtime">📖 ${escapeHtml(post.readTime)}</span>` : ''}
             </div>
+            ${post.topics && post.topics.length > 0 ? `
+              <div class="devblogs-topics">
+                ${post.topics.slice(0, 3).map(topic => `<span class="devblogs-topic">#${escapeHtml(topic.toLowerCase().replace(/[&\s]+/g, ''))}</span>`).join('')}
+              </div>
+            ` : ''}
           </div>
         </div>
       `).join('')}
