@@ -28,6 +28,14 @@ const widgetTypes = {
     defaultWidth: 7,
     defaultHeight: 10,
     defaultSettings: { count: '10' }
+  },
+  devblogs: {
+    name: 'DevBlogs',
+    description: 'Engineering blogs from top tech companies',
+    icon: icons.code,
+    defaultWidth: 8,
+    defaultHeight: 10,
+    defaultSettings: { count: '10', topic: '' }
   }
 };
 
@@ -234,6 +242,8 @@ async function forceRefreshWidget(widget) {
     contentEl.innerHTML = renderWeatherContent(data, widget.settings);
   } else if (widget.type === 'hackernews') {
     contentEl.innerHTML = renderHackerNewsContent(data);
+  } else if (widget.type === 'devblogs') {
+    contentEl.innerHTML = renderDevBlogsContent(data);
   }
 }
 
@@ -539,6 +549,33 @@ function getWidgetSettingsHTML(widget) {
         </div>
       </form>
     `;
+  } else if (widget.type === 'devblogs') {
+    const topics = [
+      '', 'Databases', 'Data Engineering', 'Performance & Scalability', 'Software Design',
+      'Cloud Infrastructure', 'Distributed Systems', 'Machine Learning & AI', 'Backend Development',
+      'Frontend Development', 'Security', 'Testing', 'CI/CD', 'Mobile Development'
+    ];
+    return `
+      <div class="widget-settings-header">DevBlogs Settings</div>
+      <form class="widget-settings-body">
+        <div class="widget-settings-field">
+          <label class="widget-settings-label">Number of Posts</label>
+          <select name="count" class="widget-settings-select">
+            ${[5, 10, 15, 20].map(n => `<option value="${n}" ${widget.settings.count == n ? 'selected' : ''}>${n}</option>`).join('')}
+          </select>
+        </div>
+        <div class="widget-settings-field">
+          <label class="widget-settings-label">Topic Filter</label>
+          <select name="topic" class="widget-settings-select">
+            ${topics.map(t => `<option value="${t}" ${widget.settings.topic === t ? 'selected' : ''}>${t || 'All Topics'}</option>`).join('')}
+          </select>
+        </div>
+        <div class="widget-settings-actions">
+          <button type="button" class="widget-settings-btn secondary">Cancel</button>
+          <button type="submit" class="widget-settings-btn primary">Save</button>
+        </div>
+      </form>
+    `;
   }
   return '<div class="widget-settings-body">No settings available</div>';
 }
@@ -560,6 +597,8 @@ async function loadWidgetContent(widget) {
     contentEl.innerHTML = renderWeatherContent(data, widget.settings);
   } else if (widget.type === 'hackernews') {
     contentEl.innerHTML = renderHackerNewsContent(data);
+  } else if (widget.type === 'devblogs') {
+    contentEl.innerHTML = renderDevBlogsContent(data);
   }
 }
 
@@ -655,6 +694,31 @@ function renderHackerNewsContent(stories) {
             <div class="hn-meta">
               <span>⬆ ${story.score || 0}</span>
               <a href="https://news.ycombinator.com/item?id=${story.id}" target="_blank" rel="noopener">💬 ${story.descendants || 0}</a>
+            </div>
+          </div>
+        </div>
+      `).join('')}
+    </div>
+  `;
+}
+
+// ============ DevBlogs Widget Content ============
+function renderDevBlogsContent(posts) {
+  if (!Array.isArray(posts) || posts.length === 0) {
+    return `<div class="widget-error">${icons.alert}<span>No posts available</span></div>`;
+  }
+
+  return `
+    <div class="devblogs-list">
+      ${posts.map((post, i) => `
+        <div class="devblogs-item">
+          <div class="devblogs-rank">${i + 1}.</div>
+          <div class="devblogs-content">
+            <a href="${escapeHtml(post.externalUrl || post.link)}" target="_blank" rel="noopener" class="devblogs-title">${escapeHtml(post.title)}</a>
+            <div class="devblogs-meta">
+              <span class="devblogs-source">${escapeHtml(post.source)}</span>
+              ${post.timeAgo ? `<span class="devblogs-time">${escapeHtml(post.timeAgo)}</span>` : ''}
+              ${post.readTime ? `<span class="devblogs-readtime">📖 ${escapeHtml(post.readTime)}</span>` : ''}
             </div>
           </div>
         </div>

@@ -142,6 +142,199 @@ async function fetchHackerNewsData(settings) {
 }
 
 /**
+ * Fetches top posts from DevBlogs.sh by scraping the feed page
+ */
+async function fetchDevBlogsData(settings) {
+  try {
+    const count = Math.min(Math.max(parseInt(settings.count) || 10, 5), 20);
+    const topic = settings.topic || '';
+
+    let url = 'https://devblogs.sh/feed';
+    if (topic) {
+      url = `https://devblogs.sh/feed?topic=${encodeURIComponent(topic)}`;
+    }
+
+    const response = await fetch(url, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (compatible; TodoWidget/1.0)',
+        'Accept': 'text/html'
+      }
+    });
+
+    if (!response.ok) {
+      return jsonResponse({ error: "Failed to fetch DevBlogs feed" }, 502);
+    }
+
+    const html = await response.text();
+    const posts = parseDevBlogsHTML(html, count);
+
+    return jsonResponse(posts);
+  } catch (error) {
+    logError('DevBlogs fetch failed:', error.message);
+    return jsonResponse({ error: "DevBlogs service unavailable" }, 503);
+  }
+}
+
+/**
+ * Parses DevBlogs HTML to extract post data
+ */
+function parseDevBlogsHTML(html, count) {
+  const posts = [];
+  
+  // Collect all matches using specific patterns
+  const postLinks = [...html.matchAll(/<a[^>]*href="(\/posts\/[^"]+)"[^>]*>([^<]+)<\/a>/gi)];
+  const times = [...html.matchAll(/(\d+\s*(?:hours?|days?|weeks?|months?|minutes?)\s*ago)/gi)];
+  const readTimes = [...html.matchAll(/(\d+\s*min\s*read)/gi)];
+  const externalUrls = [...html.matchAll(/href="(https?:\/\/(?!devblogs\.sh)[^"]+)"/gi)];
+  
+  let timeIdx = 0;
+  let readTimeIdx = 0;
+  let externalIdx = 0;
+  
+  // Build posts by matching patterns
+  for (const [, link, title] of postLinks) {
+    // Skip navigation/filter links
+    if (title.length < 10 || title.includes('Filter by')) continue;
+    if (posts.length >= count) break;
+    
+    const externalUrl = externalUrls[externalIdx] ? externalUrls[externalIdx++][1] : '';
+    const source = extractSourceFromUrl(externalUrl);
+    
+    posts.push({
+      title: decodeHTMLEntities(title.trim()),
+      link: `https://devblogs.sh${link}`,
+      externalUrl,
+      source,
+      timeAgo: times[timeIdx] ? times[timeIdx++][1] : '',
+      readTime: readTimes[readTimeIdx] ? readTimes[readTimeIdx++][1] : '',
+      summary: ''
+    });
+  }
+
+  // If regex parsing failed, try alternative method
+  if (posts.length === 0) {
+    return parseDevBlogsAlternative(html, count);
+  }
+
+  return posts.slice(0, count);
+}
+
+/**
+ * Extracts a readable source name from a URL
+ */
+function extractSourceFromUrl(url) {
+  if (!url) return 'DevBlogs';
+  
+  try {
+    const hostname = new URL(url).hostname;
+    
+    // Map known domains to readable names
+    const domainMap = {
+      'engineering.atspotify.com': 'Spotify',
+      'www.uber.com': 'Uber',
+      'uber.com': 'Uber',
+      'medium.com': 'Medium',
+      'blog.logrocket.com': 'LogRocket',
+      'dolthub.com': 'DoltHub',
+      'arpitbhayani.me': 'Arpit Bhayani',
+      'seangoedecke.com': 'Sean Goedecke',
+      'sentry.engineering': 'Sentry',
+      'blog.janestreet.com': 'Jane Street',
+      'clickhouse.com': 'ClickHouse',
+      'www.allthingsdistributed.com': 'All Things Distributed',
+      'eli.thegreenplace.net': 'Eli Bendersky',
+      'words.filippo.io': 'Filippo Valsorda',
+      'engineering.grab.com': 'Grab',
+      'palark.com': 'Palark',
+      'estuary.dev': 'Estuary',
+      'blog.allegro.tech': 'Allegro',
+      'slack.engineering': 'Slack',
+      'www.twilio.com': 'Twilio',
+      'netflixtechblog.com': 'Netflix',
+      'engineering.fb.com': 'Meta',
+      'aws.amazon.com': 'AWS',
+      'cloud.google.com': 'Google Cloud',
+      'stripe.com': 'Stripe',
+      'github.blog': 'GitHub',
+      'dropbox.tech': 'Dropbox',
+      'blog.cloudflare.com': 'Cloudflare',
+      'discord.com': 'Discord',
+      'airbnb.io': 'Airbnb',
+      'engineering.linkedin.com': 'LinkedIn',
+      'instagram-engineering.com': 'Instagram',
+      'shopify.engineering': 'Shopify',
+    };
+    
+    if (domainMap[hostname]) {
+      return domainMap[hostname];
+    }
+    
+    // Extract from subdomain patterns like "engineering.company.com" or "blog.company.com"
+    const parts = hostname.split('.');
+    if (parts.length >= 2) {
+      // Try to get a meaningful name
+      let name = parts[parts.length - 2]; // e.g., "uber" from "www.uber.com"
+      if (parts[0] === 'engineering' || parts[0] === 'blog' || parts[0] === 'tech') {
+        name = parts[1];
+      }
+      // Capitalize first letter
+      return name.charAt(0).toUpperCase() + name.slice(1);
+    }
+    
+    return 'DevBlogs';
+  } catch {
+    return 'DevBlogs';
+  }
+}
+
+/**
+ * Decodes HTML entities in a string
+ */
+function decodeHTMLEntities(text) {
+  const entities = {
+    '&amp;': '&',
+    '&lt;': '<',
+    '&gt;': '>',
+    '&quot;': '"',
+    '&#39;': "'",
+    '&nbsp;': ' ',
+    '&#x27;': "'",
+    '&#x2F;': '/',
+    '&mdash;': '—',
+    '&ndash;': '–',
+    '&hellip;': '…'
+  };
+  return text.replace(/&[^;]+;/g, match => entities[match] || match);
+}
+
+/**
+ * Alternative parsing method for DevBlogs HTML
+ */
+function parseDevBlogsAlternative(html, count) {
+  const posts = [];
+  
+  // Try to find article blocks by looking for h1 tags with links to /posts/
+  const articleRegex = /<h1[^>]*>[\s\S]*?<a[^>]*href="(\/posts\/[^"]+)"[^>]*>([^<]+)<\/a>/gi;
+  
+  let match;
+  while ((match = articleRegex.exec(html)) !== null && posts.length < count) {
+    const title = match[2].trim();
+    if (title.length < 10) continue;
+    
+    posts.push({
+      title: decodeHTMLEntities(title),
+      link: `https://devblogs.sh${match[1]}`,
+      externalUrl: '',
+      source: 'DevBlogs',
+      timeAgo: '',
+      readTime: ''
+    });
+  }
+
+  return posts;
+}
+
+/**
  * Helper function to get widget settings as an object
  */
 function getWidgetSettings(widgetId) {
@@ -304,6 +497,8 @@ export async function handleWidgetsRoutes(req, pathname, method) {
       return await fetchWeatherData(id, settingsObj, forceRefresh);
     } else if (widget.type === 'hackernews') {
       return await fetchHackerNewsData(settingsObj);
+    } else if (widget.type === 'devblogs') {
+      return await fetchDevBlogsData(settingsObj);
     }
 
     return jsonResponse({ error: "Unknown widget type" }, 400);
